@@ -1,1 +1,5 @@
 .vscode/
+
+subprojects/*
+!subprojects/fqw-devkit.wrap
+
