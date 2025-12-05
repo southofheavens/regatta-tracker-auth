@@ -67,8 +67,7 @@ std::string createAccessToken(const Devkit::Tokens::Payload& p)
 
     token.payload().set("role", p.role);
 
-    Poco::Timestamp now;
-    Poco::Timestamp expires = now + static_cast<Poco::Timestamp::TimeVal>(
+    Poco::Timestamp expires = static_cast<Poco::Timestamp::TimeVal>(
         std::chrono::duration_cast<std::chrono::microseconds>(p.exp).count()
     );
     token.setExpiration(expires);
