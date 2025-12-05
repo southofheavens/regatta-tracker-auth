@@ -1,4 +1,4 @@
-project('auth-server', 'cpp')
+project('fqw-auth', 'cpp')
 
 cpp = meson.get_compiler('cpp')
 
