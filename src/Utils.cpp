@@ -1,11 +1,16 @@
 #include <stdexcept>
+#include <random>
 
 #include <sodium.h>
-#include <jwt-cpp/jwt.h>
+#include <Poco/JWT/JWT.h>
+#include <Poco/JWT/Signer.h>
+#include <Poco/JWT/Token.h>
+#include <Poco/Timestamp.h>
+#include <Poco/JSON/Object.h>
 
 #include <Utils.h>
 
-namespace Auth::Utils
+namespace FQW::Auth::Utils
 {
 
 void libsodiumInitialize()
@@ -48,32 +53,44 @@ bool verifyPassword(const std::string& password, const std::string& hash)
 namespace
 {
 
-const std::string key_ = "secret1";
+const std::string key_ = "secret_key";
 const std::string_view letters_ = 
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 } // namespace
 
-std::string createAccessToken(const Devkit::Tokens::Payload& p) noexcept
+std::string createAccessToken(const Devkit::Tokens::Payload& p)
 {
-    return jwt::create()
-        .set_subject(std::to_string(p.sub))
-        .set_payload_claim("role", jwt::claim(p.role))
-        .set_expires_at(std::chrono::system_clock::now() + p.exp)
-        .sign(jwt::algorithm::hs256{key_});
+    Poco::JWT::Token token;
+
+    token.setSubject(std::to_string(p.sub));
+
+    token.payload().set("role", p.role);
+
+    Poco::Timestamp now;
+    Poco::Timestamp expires = now + static_cast<Poco::Timestamp::TimeVal>(
+        std::chrono::duration_cast<std::chrono::microseconds>(p.exp).count()
+    );
+    token.setExpiration(expires);
+    
+    Poco::JWT::Signer signer(key_);
+    return signer.sign(token, Poco::JWT::Signer::ALGO_HS256);
 }
 
-std::string createRefreshToken() noexcept
+std::string createRefreshToken()
 {
-    std::string token;
+    static thread_local std::random_device rd;
+    static thread_local std::mt19937 gen(rd());
+    static thread_local std::uniform_int_distribution<> dis(0, letters_.size() - 1);
 
-    for (size_t i = 0; i < refresh_token_size; ++i) 
-    {
-        size_t index = rand() % letters_.size();
-        token += letters_[index];
+    std::string token;
+    token.reserve(refresh_token_size);
+
+    for (size_t i = 0; i < refresh_token_size; ++i) {
+        token += letters_[dis(gen)];
     }
 
     return token; 
 }
 
-} // namespace Auth::Utils
+} // namespace FQW::Auth::Utils

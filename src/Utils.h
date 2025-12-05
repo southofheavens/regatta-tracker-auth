@@ -6,7 +6,7 @@
 
 #include <fqw-devkit/lib/Tokens.h>
 
-namespace Auth::Utils
+namespace FQW::Auth::Utils
 {
 
 constexpr uint8_t refresh_token_size = 64;
@@ -45,7 +45,7 @@ bool verifyPassword(const std::string& password, const std::string& hash);
  * @param p Полезная нагрузка
  * @return Токен
  */
-std::string createAccessToken(const Devkit::Tokens::Payload& p) noexcept;
+std::string createAccessToken(const Devkit::Tokens::Payload& p);
 
 /**
  * @brief Генерирует refresh токен, который представляет из себя
@@ -53,8 +53,8 @@ std::string createAccessToken(const Devkit::Tokens::Payload& p) noexcept;
  *        алфавита и цифр
  * @return Токен
  */
-std::string createRefreshToken() noexcept;
+std::string createRefreshToken();
 
-} // namespace Auth::Utils
+} // namespace FQW::Auth::Utils
 
 #endif // __UTILS_H__

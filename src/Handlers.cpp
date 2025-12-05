@@ -12,7 +12,7 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/URI.h>
 
-namespace Auth::Handlers
+namespace FQW::Auth::Handlers
 {
 
 namespace
@@ -281,4 +281,4 @@ void ErrorHandler::handleRequest(Poco::Net::HTTPServerRequest& req, Poco::Net::H
 
 }
 
-} // namespace AuthHandlers
+} // namespace FQW::Auth::Handlers

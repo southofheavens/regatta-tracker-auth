@@ -11,8 +11,9 @@ poco_foundation = cpp.find_library('PocoFoundation', required: true)
 poco_util = cpp.find_library('PocoUtil', required: true)
 poco_net = cpp.find_library('PocoNet', required: true)
 poco_json = cpp.find_library('PocoJSON', required: true)
-poco_data = cpp.find_library('PocoData', required: false)  # опционально
+poco_data = cpp.find_library('PocoData', required: false) 
 poco_data_postgresql = cpp.find_library('PocoDataPostgreSQL', required: false)
+poco_jwt = cpp.find_library('PocoJWT', required: true)
 
 pq = cpp.find_library('pq', required: true)
 sodium = cpp.find_library('sodium', required: true)
@@ -24,6 +25,7 @@ all_deps = [
   poco_util,
   poco_net,
   poco_json,
+  poco_jwt,
   pq,
   sodium,
   ssl,

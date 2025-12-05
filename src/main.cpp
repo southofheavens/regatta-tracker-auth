@@ -39,10 +39,10 @@ private:
         if (method == "POST")
         {
             if (uri == "/login") {
-                return new Auth::Handlers::LoginHandler(sessionPool_);
+                return new FQW::Auth::Handlers::LoginHandler(sessionPool_);
             }
             else if (uri == "/register") {
-                return new Auth::Handlers::RegisterHandler(sessionPool_);
+                return new FQW::Auth::Handlers::RegisterHandler(sessionPool_);
             }
             else {
                 // ErrorHandler
@@ -77,8 +77,7 @@ protected:
     {
         try
         {
-            Auth::Utils::libsodiumInitialize();
-            srand(std::chrono::system_clock::now().time_since_epoch().count());
+            FQW::Auth::Utils::libsodiumInitialize();
 
             Poco::Data::PostgreSQL::Connector::registerConnector();
             std::string connectionString = "host=localhost port=5432 dbname=something user=postgres password=postgres";

@@ -6,7 +6,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Data/SessionPool.h>
 
-namespace Auth::Handlers
+namespace FQW::Auth::Handlers
 {
 
 /**
@@ -51,6 +51,6 @@ private:
     void handleRequest(Poco::Net::HTTPServerRequest& req, Poco::Net::HTTPServerResponse& res) override;
 };
 
-} // namespace Handlers
+} // namespace FQW::Auth::Handlers
 
 #endif // __HANDLERS_H__
