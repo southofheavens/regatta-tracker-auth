@@ -52,7 +52,7 @@ const     std::string          key_                          = "secret_key";
  * которые могут вылететь из "недр" других функций. Конструктор HandlersException принимает 
  * std::string errorMessage - сообщение об ошибке и Poco::Net::HTTPResponse::HTTPStatus - код
  * http-ответа, эти данные будут отправлены клиенту. Если исключение перехватит блок catch (...),
- * то клиент получит код 500 - HTTP_INTERNAL_SERVER_ERROR и сообщение "error".
+ * то клиент получит код 500 - HTTP_INTERNAL_SERVER_ERROR и сообщение "Internal server error."
  */
 class HandlersException;
 
@@ -151,6 +151,11 @@ Poco::JSON::Object::Ptr extractJsonObjectFromRequest(Poco::Net::HTTPServerReques
 
 // Считывает lua-script из файла с именем filename и возвращает его
 std::string readLuaScript(const std::string & filename);
+
+// Проверяет, есть ли для данных fingerprint и UA refresh-токен. Если да, то возвращает его.
+// В противном случае возвращает std::nullopt 
+std::optional<std::string> getRefreshTokenByUserData(Poco::Redis::Client & redisClient, uint64_t userId,
+    std::string & fingerprint, std::string & userAgent);
 
 
 
@@ -376,12 +381,11 @@ Poco::JSON::Object::Ptr extractJsonObjectFromRequest(Poco::Net::HTTPServerReques
     return result.extract<Poco::JSON::Object::Ptr>();
 }
 
-std::string readLuaScript(const std::string& filename) 
+std::string readLuaScript(const std::string & filename) 
 {
-    std::cout << filename << '\n';
     std::ifstream file(filename);
     
-    if (!file.is_open()) {
+    if (not file.is_open()) {
         throw std::runtime_error("Cannot open Lua script: " + filename);
     }
     return std::string
@@ -389,6 +393,12 @@ std::string readLuaScript(const std::string& filename)
         std::istreambuf_iterator<char>(file),
         std::istreambuf_iterator<char>()
     );
+}
+
+std::optional<std::string> getRefreshTokenByUserData(Poco::Redis::Client & redisClient, uint64_t userId,
+    std::string & fingerprint, std::string & userAgent)
+{
+    // TODO
 }
 
 } // namespace
@@ -412,13 +422,33 @@ try
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
+    /* ua читаем только из заголовка */
+    if (not req.has("User-Agent")) {
+        throw HandlersException(std::format("User-Agent header was not received"), 
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+    std::string userAgent = req.get("User-Agent");
+
+    /* Если заголовок Fingerprint пуст, пытаемся считать fingerprint из тела запроса */
     Poco::JSON::Object::Ptr jsonObject = Auth::Handlers::extractJsonObjectFromRequest(req);
+    std::string fingerprint;
+    if (not req.has("X-Fingerprint"))
+    {
+        if (not jsonObject->has("fingerprint")) {
+            throw HandlersException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
+                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+        }
+        fingerprint = (jsonObject->get("fingerprint")).extract<std::string>();
+    }
+    else {
+        fingerprint = req.get("X-Fingerprint");
+    }
+
     std::map<std::string, Poco::Dynamic::Var> clientContext = 
     {
         {"login", {}},
         {"password", {}}
     };
-
     Auth::Handlers::fillRequiredFieldsFromJson(jsonObject, clientContext);
 
     /**
@@ -455,29 +485,19 @@ try
             Auth::Handlers::access_token_validity_period).time_since_epoch())
     };
 
-    /* Генерируем access и refresh токены */
+    /* Генерируем access токен */
     std::string accessToken = Auth::Handlers::createAccessToken(jwtPayload);
-    std::string refreshToken = Auth::Handlers::createRefreshToken();
 
-    /* ua читаем только из заголовка */
-    if (not req.has("User-Agent")) {
-        throw HandlersException(std::format("User-Agent header was not received"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-    std::string userAgent = req.get("User-Agent");
-
-    /* Если заголовок Fingerprint пуст, пытаемся считать fingerprint из тела запроса */
-    std::string fingerprint;
-    if (not req.has("X-Fingerprint"))
+    /* Проверяем, существует ли для данных UA и fingerprint refresh-токен */
+    std::string refreshToken;
+    if (std::optional<std::string> potentionalRefresh 
+            = getRefreshTokenByUserData(redisClient_, userId, fingerprint, userAgent);
+        potentionalRefresh.has_value()) 
     {
-        if (not jsonObject->has("fingerprint")) {
-            throw HandlersException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-        fingerprint = (jsonObject->get("fingerprint")).extract<std::string>();
+        refreshToken = potentionalRefresh.value();
     }
     else {
-        fingerprint = req.get("X-Fingerprint");
+        std::string refreshToken = Auth::Handlers::createRefreshToken();;
     }
 
     Auth::Handlers::addRefreshToRedis(redisClient_, refreshToken, userId, fingerprint, userAgent);
