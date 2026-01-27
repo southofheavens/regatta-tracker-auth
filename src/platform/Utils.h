@@ -11,6 +11,7 @@
 #include <Poco/Redis/Client.h>
 
 #include <fqw-devkit/lib/Tokens.h>
+#include <fqw-devkit/lib/General.h>
 
 namespace FQW::Auth::Utils
 {
@@ -27,40 +28,6 @@ const     std::string            key                           = "secret_key";
 const std::array<std::string, 2> userRoles = {"Participant", "Judge"};
 
 
-
-/**
- * В библиотеке Poco у методов и функций отсутствует квалификатор noexcept, поэтому очень тяжело
- * отследить самому выбрасывает ли функция исключения или нет. Для перестраховки в методах handleRequest
- * присутствует блок try - catch, который перехватывает два типа исключений: HandlersException - 
- * исключение выбрасывается для предусмотренных ошибок (например, от пользователя ожидается логин 
- * и пароль в теле json, а что-то из этого отсутствует) и ... для непредусмотренных исключений, 
- * которые могут вылететь из "недр" других функций. Конструктор HandlersException принимает 
- * std::string errorMessage - сообщение об ошибке и Poco::Net::HTTPResponse::HTTPStatus - код
- * http-ответа, эти данные будут отправлены клиенту. Если исключение перехватит блок catch (...),
- * то клиент получит код 500 - HTTP_INTERNAL_SERVER_ERROR и сообщение "Internal server error."
- */
-class HandlersException : public std::exception 
-{
-public:
-    HandlersException(const std::string & errorMessage, Poco::Net::HTTPResponse::HTTPStatus httpStatus) 
-        : errorMessage_{errorMessage}, httpStatus_{httpStatus} {}
-
-    const char * what() const noexcept final 
-    { return errorMessage_.c_str(); }
-
-    Poco::Net::HTTPResponse::HTTPStatus status() const noexcept
-    { return httpStatus_; }
-
-private:
-    std::string                         errorMessage_;
-    Poco::Net::HTTPResponse::HTTPStatus httpStatus_;
-};
-
-/**
- * Отправляет клиенту ответ со статусом status и сообщением message 
- */
-void sendJsonResponse(Poco::Net::HTTPServerResponse & res,
-    const std::string & status, const std::string & message);
 
 /**
  * @brief Хэширует пароль используя Argon2 алгоритм
@@ -117,14 +84,14 @@ void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshT
 /**
  * Извлекает из json'а значения для всех ключей, перечисленных в контейнере pairs, который хранит пары, и
  * присваивает каждому ключу соответствующее значение. Если хотя бы одно поле отсутствует в json, 
- * будет выброшено исключение HandlersException.
+ * будет выброшено исключение FQWException.
  */
 inline void fillRequiredFieldsFromJson(Poco::JSON::Object::Ptr jsonObject, auto & pairs)
 {
     for (auto & [key, value] : pairs)
     {
         if (not jsonObject->has(key)) {
-            throw HandlersException(std::format("Field {} was not received", key), 
+            throw FQW::Devkit::FQWException(std::format("Field {} was not received", key), 
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         value = jsonObject->get(key);
@@ -150,14 +117,14 @@ inline void tryFillRequiredFieldsFromJson(Poco::JSON::Object::Ptr jsonObject, au
 /** 
  * Извлекает из запроса значения для всех ключей (имён заголовков), перечисленных в контейнере
  * pairs, который хранит пары, и присваивает каждому ключу соответствующее значение. Если хотя бы один
- * заголовок отсутствует - выбрасывается исключение HandlersException.
+ * заголовок отсутствует - выбрасывается исключение FQWException.
  */
 inline void fillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, auto & pairs)
 {
     for (auto & [key, value] : pairs)
     {
         if (not req.has(key)) {
-            throw HandlersException(std::format("Header {} was not received", key), 
+            throw FQW::Devkit::FQWException(std::format("Header {} was not received", key), 
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         value = req.get(key);

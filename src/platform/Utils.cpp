@@ -27,17 +27,6 @@
 namespace FQW::Auth::Utils
 {
 
-void sendJsonResponse(Poco::Net::HTTPServerResponse& res,
-    const std::string& status, const std::string& message)
-{
-    Poco::JSON::Object json;
-    json.set("status", status);
-    json.set("message", message);
-
-    std::ostream& out = res.send();
-    json.stringify(out);
-}
-
 std::string hashPassword(const std::string& password)
 {
     char hashed[crypto_pwhash_STRBYTES];
@@ -130,7 +119,7 @@ void deleteRefreshFromRedis(Poco::Redis::Client & redisClient,
         Poco::Int64 result = redisClient.execute<Poco::Int64>(cmd);
     } 
     catch (...) {
-        throw HandlersException("Internal server error. Try repeating the request.",
+        throw FQW::Devkit::FQWException("Internal server error. Try repeating the request.",
             Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
@@ -160,7 +149,7 @@ void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshT
         redisClient.execute<Poco::Int64>(cmd);
     } 
     catch (...) {
-        throw HandlersException("Internal server error. Try repeating the request.",
+        throw FQW::Devkit::FQWException("Internal server error. Try repeating the request.",
             Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
@@ -174,12 +163,12 @@ Poco::JSON::Object::Ptr extractJsonObjectFromRequest(Poco::Net::HTTPServerReques
         result = parser.parse(req.stream());
     }
     catch (...) {
-        throw HandlersException("Received invalid json", 
+        throw FQW::Devkit::FQWException("Received invalid json", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
     if (result.type() != typeid(Poco::JSON::Object::Ptr)) {
-        throw HandlersException("Expected JSON object, not array", 
+        throw FQW::Devkit::FQWException("Expected JSON object, not array", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
@@ -223,7 +212,7 @@ std::optional<std::string> getHashRefreshTokenByUserData(Poco::Redis::Client & r
         return result.value();
     } 
     catch (...) {
-        throw HandlersException("Internal server error. Try repeating the request.",
+        throw FQW::Devkit::FQWException("Internal server error. Try repeating the request.",
             Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }

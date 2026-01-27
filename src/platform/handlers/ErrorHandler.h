@@ -18,7 +18,7 @@ public:
     void handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) final
     {
         res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        Auth::Utils::sendJsonResponse(res, "error", "Non-existent URL or bad method");
+        FQW::Devkit::sendJsonResponse(res, "error", "Non-existent URL or bad method");
     }
 };
 

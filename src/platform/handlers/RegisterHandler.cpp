@@ -8,12 +8,12 @@ void RegisterHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Ne
 try
 {
     if (req.getContentType().find("application/json") == std::string::npos) {
-        throw Auth::Utils::HandlersException(std::format("Content-Type must be application/json"), 
+        throw FQW::Devkit::FQWException(std::format("Content-Type must be application/json"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
     if (req.getContentLength() == 0) {
-        throw Auth::Utils::HandlersException(std::format("Empty request body"), 
+        throw FQW::Devkit::FQWException(std::format("Empty request body"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -32,7 +32,7 @@ try
 
     std::string stringRole = clientContext["role"].extract<std::string>();
     if (stringRole != Auth::Utils::userRoles[0] or stringRole != Auth::Utils::userRoles[1]) {
-        throw Auth::Utils::HandlersException(std::format("Invalid role. Correct roles is 'Participant' and 'Judge'"), 
+        throw FQW::Devkit::FQWException(std::format("Invalid role. Correct roles is 'Participant' and 'Judge'"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -64,17 +64,17 @@ try
         Poco::Data::Keywords::use(hashedPassword);
     stmt.execute();
 
-    Auth::Utils::sendJsonResponse(res, "OK", "OK");
+    FQW::Devkit::sendJsonResponse(res, "OK", "OK");
 }
-catch (const Auth::Utils::HandlersException & e)
+catch (const FQW::Devkit::FQWException & e)
 {
     res.setStatusAndReason(e.status());
-    Auth::Utils::sendJsonResponse(res, "error", e.what());
+    FQW::Devkit::sendJsonResponse(res, "error", e.what());
 }
 catch (...)
 {
     res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-    Auth::Utils::sendJsonResponse(res, "error", "Internal server error");
+    FQW::Devkit::sendJsonResponse(res, "error", "Internal server error");
 }
 
 } // namespace FQW::Auth

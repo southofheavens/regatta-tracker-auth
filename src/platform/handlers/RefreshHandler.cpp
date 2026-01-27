@@ -24,7 +24,7 @@ try
     catch (Poco::Exception & e)
     {
         if (req.getContentType().find("application/json") == std::string::npos) {
-            throw Auth::Utils::HandlersException("Content-Type must be application/json",
+            throw FQW::Devkit::FQWException("Content-Type must be application/json",
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
 
@@ -36,7 +36,7 @@ try
         Poco::JSON::Object::Ptr jsonObject = result.extract<Poco::JSON::Object::Ptr>();
         
         if (not jsonObject->has("refresh_token")) {
-            throw Auth::Utils::HandlersException("Expected to receive refresh token "
+            throw FQW::Devkit::FQWException("Expected to receive refresh token "
                 "in the cookie/request body",
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
@@ -46,7 +46,7 @@ try
 
     /* ua читаем только из заголовка */
     if (not req.has("User-Agent")) {
-        throw Auth::Utils::HandlersException(std::format("User-Agent header was not received"), 
+        throw FQW::Devkit::FQWException(std::format("User-Agent header was not received"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
     std::string userAgent = req.get("User-Agent");
@@ -57,7 +57,7 @@ try
     if (not req.has("X-Fingerprint"))
     {
         if (not jsonObject->has("fingerprint")) {
-            throw Auth::Utils::HandlersException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
+            throw FQW::Devkit::FQWException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         fingerprint = (jsonObject->get("fingerprint")).extract<std::string>();
@@ -73,7 +73,7 @@ try
     Poco::Int64 int64ResultOfCmd = redisClient_.execute<Poco::Int64>(cmd);
 
     if (int64ResultOfCmd == 0) {
-        throw Auth::Utils::HandlersException(std::format("Bad refresh token"), 
+        throw FQW::Devkit::FQWException(std::format("Bad refresh token"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -89,7 +89,7 @@ try
     if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != fingerprint
         or rtkFileds.get<Poco::Redis::BulkString>(1).value() != userAgent) 
     {
-        throw Auth::Utils::HandlersException(std::format("Refresh token used from unauthorized device"), 
+        throw FQW::Devkit::FQWException(std::format("Refresh token used from unauthorized device"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -102,7 +102,7 @@ try
         Poco::Data::Keywords::into(userRole);
     
     if (stmt.execute() == 0) {
-        throw Auth::Utils::HandlersException(std::format("Internal server error. Try repeating the request"), 
+        throw FQW::Devkit::FQWException(std::format("Internal server error. Try repeating the request"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -135,15 +135,15 @@ try
 
     resultJson.stringify(res.send());
 }
-catch (const Auth::Utils::HandlersException & e)
+catch (const FQW::Devkit::FQWException & e)
 {
     res.setStatusAndReason(e.status());
-    Auth::Utils::sendJsonResponse(res, "error", e.what());
+    FQW::Devkit::sendJsonResponse(res, "error", e.what());
 }
 catch (...)
 {
     res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-    Auth::Utils::sendJsonResponse(res, "error", "Internal server error");
+    FQW::Devkit::sendJsonResponse(res, "error", "Internal server error");
 }
 
 } // namespace FQW::Auth
