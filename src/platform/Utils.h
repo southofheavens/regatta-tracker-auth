@@ -10,8 +10,8 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Redis/Client.h>
 
-#include <fqw-devkit/lib/Tokens.h>
-#include <fqw-devkit/lib/General.h>
+#include <fqw/devkit/Tokens.h>
+#include <fqw/devkit/General.h>
 
 namespace FQW::Auth::Utils
 {

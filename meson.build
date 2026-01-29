@@ -55,7 +55,6 @@ src_files = [
 
 include_dirs = [
   'src',
-  'subprojects',
   'src/platform'
 ]
 
