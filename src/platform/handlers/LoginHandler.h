@@ -7,7 +7,7 @@
 #include <Poco/Data/SessionPool.h>
 #include <Poco/Redis/Client.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 class LoginHandler : public Poco::Net::HTTPRequestHandler
@@ -25,6 +25,6 @@ private:
     Poco::Redis::Client & redisClient_;
 };
 
-} // namespace FQW::Auth
+} // namespace RGT::Auth
 
 #endif // __LOGIN_HANDLER_H__

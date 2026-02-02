@@ -6,7 +6,7 @@
 #include <AuthServer.h>
 #include <AuthFactory.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 int AuthServer::main(const std::vector<std::string>&)
@@ -56,4 +56,4 @@ catch (...) {
     return Application::EXIT_SOFTWARE;
 }
 
-} // namespace FQW::Auth
+} // namespace RGT::Auth

@@ -1,9 +1,9 @@
-project('fqw-auth', 'cpp')
+project('rgt-auth', 'cpp')
 
 cpp = meson.get_compiler('cpp')
 
-devkit_dep = dependency('fqw-devkit',
-  fallback: ['fqw-devkit', 'devkit_dep'],
+devkit_dep = dependency('rgt-devkit',
+  fallback: ['rgt-devkit', 'devkit_dep'],
   required: true
 )
 
@@ -54,15 +54,14 @@ src_files = [
 ]
 
 include_dirs = [
-  'src',
   'src/platform'
 ]
 
-executable('fqw-auth',
+executable('rgt-auth',
   src_files,
   include_directories: include_dirs,
   dependencies: all_deps,
   cpp_args: ['-std=c++20']
 )
 
-# DYLD_LIBRARY_PATH=/usr/local/lib ./build/fqw-auth
+# DYLD_LIBRARY_PATH=/usr/local/lib ./build/rgt-auth

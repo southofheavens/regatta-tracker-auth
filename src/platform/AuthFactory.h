@@ -8,7 +8,7 @@
 #include <handlers/RefreshHandler.h>
 #include <handlers/ErrorHandler.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 class AuthFactory : public Poco::Net::HTTPRequestHandlerFactory
@@ -26,6 +26,6 @@ private:
     Poco::Redis::Client & redisClient_;
 };
 
-} // namespace FQW::Auth
+} // namespace RGT::Auth
 
 #endif // __AUTH_FACTORY_H__

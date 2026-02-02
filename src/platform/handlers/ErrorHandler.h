@@ -7,7 +7,7 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 class ErrorHandler : public Poco::Net::HTTPRequestHandler
@@ -18,10 +18,10 @@ public:
     void handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) final
     {
         res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        FQW::Devkit::sendJsonResponse(res, "error", "Non-existent URL or bad method");
+        RGT::Devkit::sendJsonResponse(res, "error", "Non-existent URL or bad method");
     }
 };
 
-} // namespace FQW::Auth
+} // namespace RGT::Auth
 
 #endif // __ERROR_HANDLER_H__   

@@ -6,7 +6,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Data/SessionPool.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 class RegisterHandler : public Poco::Net::HTTPRequestHandler
@@ -22,6 +22,6 @@ private:
     Poco::Data::SessionPool & sessionPool_;
 };
     
-} // namespace FQW::Auth
+} // namespace RGT::Auth
 
 #endif // __REGISTER_HANDLER_H__

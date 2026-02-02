@@ -6,7 +6,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 class AuthServer : public Poco::Util::ServerApplication
@@ -15,6 +15,6 @@ public:
     int main(const std::vector<std::string>&) final;
 };
 
-} // namespace FQW::Auth
+} // namespace RGT::Auth
 
 #endif // __AUTH_SERVER_H__

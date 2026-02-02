@@ -1,5 +1,5 @@
 .vscode/
 
 subprojects/*
-!subprojects/fqw-devkit.wrap
+!subprojects/rgt-devkit.wrap
 

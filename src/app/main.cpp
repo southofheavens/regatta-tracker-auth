@@ -2,4 +2,4 @@
 
 #include <AuthServer.h>
 
-POCO_SERVER_MAIN(FQW::Auth::AuthServer)
+POCO_SERVER_MAIN(RGT::Auth::AuthServer)

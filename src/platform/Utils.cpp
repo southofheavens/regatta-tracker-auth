@@ -24,7 +24,7 @@
 #include <Poco/DigestStream.h>
 #include <Poco/Redis/Command.h>
 
-namespace FQW::Auth::Utils
+namespace RGT::Auth::Utils
 {
 
 std::string hashPassword(const std::string& password)
@@ -54,7 +54,7 @@ bool verifyPassword(const std::string& password, const std::string& hash)
     }
 }
 
-std::string createAccessToken(const FQW::Devkit::Tokens::Payload& p)
+std::string createAccessToken(const RGT::Devkit::Tokens::Payload& p)
 {
     Poco::JWT::Token token;
 
@@ -119,7 +119,7 @@ void deleteRefreshFromRedis(Poco::Redis::Client & redisClient,
         Poco::Int64 result = redisClient.execute<Poco::Int64>(cmd);
     } 
     catch (...) {
-        throw FQW::Devkit::FQWException("Internal server error. Try repeating the request.",
+        throw RGT::Devkit::RGTException("Internal server error. Try repeating the request.",
             Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
@@ -149,7 +149,7 @@ void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshT
         redisClient.execute<Poco::Int64>(cmd);
     } 
     catch (...) {
-        throw FQW::Devkit::FQWException("Internal server error. Try repeating the request.",
+        throw RGT::Devkit::RGTException("Internal server error. Try repeating the request.",
             Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
@@ -163,12 +163,12 @@ Poco::JSON::Object::Ptr extractJsonObjectFromRequest(Poco::Net::HTTPServerReques
         result = parser.parse(req.stream());
     }
     catch (...) {
-        throw FQW::Devkit::FQWException("Received invalid json", 
+        throw RGT::Devkit::RGTException("Received invalid json", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
     if (result.type() != typeid(Poco::JSON::Object::Ptr)) {
-        throw FQW::Devkit::FQWException("Expected JSON object, not array", 
+        throw RGT::Devkit::RGTException("Expected JSON object, not array", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
@@ -212,9 +212,9 @@ std::optional<std::string> getHashRefreshTokenByUserData(Poco::Redis::Client & r
         return result.value();
     } 
     catch (...) {
-        throw FQW::Devkit::FQWException("Internal server error. Try repeating the request.",
+        throw RGT::Devkit::RGTException("Internal server error. Try repeating the request.",
             Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
 
-} // namespace FQW::Auth::Utils
+} // namespace RGT::Auth::Utils

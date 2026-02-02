@@ -1,6 +1,6 @@
 #include <AuthFactory.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 Poco::Net::HTTPRequestHandler * AuthFactory::createRequestHandler(const Poco::Net::HTTPServerRequest & request) 
@@ -11,21 +11,21 @@ Poco::Net::HTTPRequestHandler * AuthFactory::createRequestHandler(const Poco::Ne
     if (method == "POST")
     {
         if (uri == "/login") {
-            return new FQW::Auth::LoginHandler(sessionPool_, redisClient_);
+            return new RGT::Auth::LoginHandler(sessionPool_, redisClient_);
         }
         else if (uri == "/register") {
-            return new FQW::Auth::RegisterHandler(sessionPool_);
+            return new RGT::Auth::RegisterHandler(sessionPool_);
         }
         else if (uri == "/refresh") {
-            return new FQW::Auth::RefreshHandler(sessionPool_, redisClient_);
+            return new RGT::Auth::RefreshHandler(sessionPool_, redisClient_);
         }
         else {
-            return new FQW::Auth::ErrorHandler();
+            return new RGT::Auth::ErrorHandler();
         }
     }
     else {
-        return new FQW::Auth::ErrorHandler();
+        return new RGT::Auth::ErrorHandler();
     }
 }
 
-} // namespace FQW::Auth
+} // namespace RGT::Auth

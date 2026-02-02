@@ -10,10 +10,10 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Redis/Client.h>
 
-#include <fqw/devkit/Tokens.h>
-#include <fqw/devkit/General.h>
+#include <rgt/devkit/Tokens.h>
+#include <rgt/devkit/General.h>
 
-namespace FQW::Auth::Utils
+namespace RGT::Auth::Utils
 {
 
 // Лимит refresh-токенов на одного пользователя
@@ -51,7 +51,7 @@ bool verifyPassword(const std::string & password, const std::string & hash);
  * @param p Полезная нагрузка
  * @return Токен
  */
-std::string createAccessToken(const FQW::Devkit::Tokens::Payload & p);
+std::string createAccessToken(const RGT::Devkit::Tokens::Payload & p);
 
 /**
  * @brief Генерирует refresh токен, представляющий из себя UUID
@@ -84,14 +84,14 @@ void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshT
 /**
  * Извлекает из json'а значения для всех ключей, перечисленных в контейнере pairs, который хранит пары, и
  * присваивает каждому ключу соответствующее значение. Если хотя бы одно поле отсутствует в json, 
- * будет выброшено исключение FQWException.
+ * будет выброшено исключение RGTException.
  */
 inline void fillRequiredFieldsFromJson(Poco::JSON::Object::Ptr jsonObject, auto & pairs)
 {
     for (auto & [key, value] : pairs)
     {
         if (not jsonObject->has(key)) {
-            throw FQW::Devkit::FQWException(std::format("Field {} was not received", key), 
+            throw RGT::Devkit::RGTException(std::format("Field {} was not received", key), 
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         value = jsonObject->get(key);
@@ -117,14 +117,14 @@ inline void tryFillRequiredFieldsFromJson(Poco::JSON::Object::Ptr jsonObject, au
 /** 
  * Извлекает из запроса значения для всех ключей (имён заголовков), перечисленных в контейнере
  * pairs, который хранит пары, и присваивает каждому ключу соответствующее значение. Если хотя бы один
- * заголовок отсутствует - выбрасывается исключение FQWException.
+ * заголовок отсутствует - выбрасывается исключение RGTException.
  */
 inline void fillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, auto & pairs)
 {
     for (auto & [key, value] : pairs)
     {
         if (not req.has(key)) {
-            throw FQW::Devkit::FQWException(std::format("Header {} was not received", key), 
+            throw RGT::Devkit::RGTException(std::format("Header {} was not received", key), 
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         value = req.get(key);
@@ -160,6 +160,6 @@ std::string readLuaScript(const std::string & filename);
 std::optional<std::string> getHashRefreshTokenByUserData(Poco::Redis::Client & redisClient, uint64_t userId,
     std::string & fingerprint, std::string & userAgent);
 
-} // namespace FQW::Auth::Utils
+} // namespace RGT::Auth::Utils
 
 #endif // __UTILS_H__

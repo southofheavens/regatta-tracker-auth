@@ -1,25 +1,25 @@
 #include <handlers/LoginHandler.h>
 #include <Utils.h>
 
-namespace FQW::Auth
+namespace RGT::Auth
 {
 
 void LoginHandler::handleRequest(Poco::Net::HTTPServerRequest& req, Poco::Net::HTTPServerResponse& res)
 try
 {
     if (req.getContentType().find("application/json") == std::string::npos) {
-        throw FQW::Devkit::FQWException("Content-Type must be application/json", 
+        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
     if (req.getContentLength() == 0) {
-        throw FQW::Devkit::FQWException("Empty request body", 
+        throw RGT::Devkit::RGTException("Empty request body", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
     /* ua читаем только из заголовка */
     if (not req.has("User-Agent")) {
-        throw FQW::Devkit::FQWException(std::format("User-Agent header was not received"), 
+        throw RGT::Devkit::RGTException(std::format("User-Agent header was not received"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
     std::string userAgent = req.get("User-Agent");
@@ -30,7 +30,7 @@ try
     if (not req.has("X-Fingerprint"))
     {
         if (not jsonObject->has("fingerprint")) {
-            throw FQW::Devkit::FQWException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
+            throw RGT::Devkit::RGTException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         fingerprint = (jsonObject->get("fingerprint")).extract<std::string>();
@@ -62,11 +62,11 @@ try
         Poco::Data::Keywords::into(userId);
 
     if (stmt.execute() == 0) {
-        throw FQW::Devkit::FQWException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+        throw RGT::Devkit::RGTException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
     if (not Auth::Utils::verifyPassword(clientContext["password"].toString(), hashedPassword)) {
-        throw FQW::Devkit::FQWException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+        throw RGT::Devkit::RGTException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
     /* Проверяем, существует ли для данных UA и fingerprint refresh-токен */
@@ -111,15 +111,15 @@ try
 
     resultJson.stringify(res.send());
 }
-catch (const FQW::Devkit::FQWException & e)
+catch (const RGT::Devkit::RGTException & e)
 {
     res.setStatusAndReason(e.status());
-    FQW::Devkit::sendJsonResponse(res, "error", e.what());
+    RGT::Devkit::sendJsonResponse(res, "error", e.what());
 }
 catch (...)
 {
     res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-    FQW::Devkit::sendJsonResponse(res, "error", "Internal server error");
+    RGT::Devkit::sendJsonResponse(res, "error", "Internal server error");
 }
 
-} // namespace FQW::Auth 
+} // namespace RGT::Auth 
