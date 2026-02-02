@@ -12,7 +12,9 @@ namespace RGT::Auth
 class AuthServer : public Poco::Util::ServerApplication
 {
 public:
-    int main(const std::vector<std::string>&) final;
+    void initialize(Application & self) final;
+
+    int main(const std::vector<std::string> &) final;
 };
 
 } // namespace RGT::Auth

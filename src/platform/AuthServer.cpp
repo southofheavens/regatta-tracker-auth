@@ -9,13 +9,18 @@
 namespace RGT::Auth
 {
 
+void AuthServer::initialize(Application & self)
+{
+    ServerApplication::initialize(self);
+
+    if (sodium_init() < 0) {
+        throw Poco::Exception("Failed to initialize libsodium");
+    }
+}
+
 int AuthServer::main(const std::vector<std::string>&)
 try
 {
-    if (sodium_init() < 0) {
-        throw std::runtime_error("Failed to initialize libsodium");
-    }
-
     Poco::Data::PostgreSQL::Connector::registerConnector();
     std::string connectionString = "host=localhost port=5432 dbname=something user=postgres password=postgres";
     Poco::Data::SessionPool sessionPool("PostgreSQL", connectionString, 1, 10);
