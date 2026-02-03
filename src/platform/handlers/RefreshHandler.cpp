@@ -93,17 +93,19 @@ try
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
-    Poco::Data::Session session = sessionPool_.get();
-    Poco::Data::Statement stmt(session);
-        
     std::string userRole;
-    stmt << "SELECT role FROM users WHERE id = $1",
-        Poco::Data::Keywords::use(userId),
-        Poco::Data::Keywords::into(userRole);
-    
-    if (stmt.execute() == 0) {
-        throw RGT::Devkit::RGTException(std::format("Internal server error. Try repeating the request"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    {
+        Poco::Data::Session session = sessionPool_.get();
+        Poco::Data::Statement stmt(session);
+            
+        stmt << "SELECT role FROM users WHERE id = $1",
+            Poco::Data::Keywords::use(userId),
+            Poco::Data::Keywords::into(userRole);
+        
+        if (stmt.execute() == 0) {
+            throw RGT::Devkit::RGTException(std::format("Internal server error. Try repeating the request"), 
+                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+        }
     }
 
     // Формируем полезную нагрузку для access-токена

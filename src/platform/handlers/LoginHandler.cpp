@@ -46,23 +46,23 @@ try
     };
     Auth::Utils::fillRequiredFieldsFromJson(jsonObject, clientContext);
 
-    /**
-     * Смотрим, есть ли пользователь с таким логином && правильно ли введён пароль,
-     * если пользователь с таким логином существует
-     */
-    Poco::Data::Session session = sessionPool_.get();
-    Poco::Data::Statement stmt(session);
-        
+    /// Смотрим, есть ли пользователь с таким логином && правильно ли введён пароль,
+    /// если пользователь с таким логином существует    
     std::string hashedPassword, userRole;
     uint64_t userId;
-    stmt << "SELECT password, role, id FROM users WHERE login = $1",
-        Poco::Data::Keywords::use(clientContext["login"]),
-        Poco::Data::Keywords::into(hashedPassword),
-        Poco::Data::Keywords::into(userRole),
-        Poco::Data::Keywords::into(userId);
+    {
+        Poco::Data::Session session = sessionPool_.get();
+        Poco::Data::Statement stmt(session);
 
-    if (stmt.execute() == 0) {
-        throw RGT::Devkit::RGTException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+        stmt << "SELECT password, role, id FROM users WHERE login = $1",
+            Poco::Data::Keywords::use(clientContext["login"]),
+            Poco::Data::Keywords::into(hashedPassword),
+            Poco::Data::Keywords::into(userRole),
+            Poco::Data::Keywords::into(userId);
+
+        if (stmt.execute() == 0) {
+            throw RGT::Devkit::RGTException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+        }
     }
 
     if (not Auth::Utils::verifyPassword(clientContext["password"].toString(), hashedPassword)) {

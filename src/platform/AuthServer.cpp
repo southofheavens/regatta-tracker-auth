@@ -16,34 +16,38 @@ void AuthServer::initialize(Application & self)
     if (sodium_init() < 0) {
         throw Poco::Exception("Failed to initialize libsodium");
     }
+
+    Poco::Data::PostgreSQL::Connector::registerConnector();
+    std::string connectionString = "host=localhost port=5432 dbname=something user=postgres password=postgres";
+    sessionPool_ = std::make_unique<Poco::Data::SessionPool>("PostgreSQL", connectionString, 1, 10);
+
+    redisClient_ = std::make_unique<Poco::Redis::Client>("127.0.0.1:6379");
+}
+
+void AuthServer::uninitialize()
+{
+    Poco::Data::PostgreSQL::Connector::unregisterConnector();
+
+    ServerApplication::uninitialize();
 }
 
 int AuthServer::main(const std::vector<std::string>&)
 try
 {
-    Poco::Data::PostgreSQL::Connector::registerConnector();
-    std::string connectionString = "host=localhost port=5432 dbname=something user=postgres password=postgres";
-    Poco::Data::SessionPool sessionPool("PostgreSQL", connectionString, 1, 10);
-
-    Poco::Redis::Client redisClient("127.0.0.1:6379");
-
     Poco::Net::ServerSocket svs(8080);
     
     Poco::Net::HTTPServer srv
     (
-        new Auth::AuthFactory(sessionPool, redisClient), 
+        new Auth::AuthFactory(*sessionPool_, *redisClient_), 
         svs, 
         new Poco::Net::HTTPServerParams
     );
 
     srv.start();
-    std::cout << "Сервер запущен на порту 8080..." << std::endl;
     
     waitForTerminationRequest();
     
     srv.stop();
-
-    Poco::Data::PostgreSQL::Connector::unregisterConnector();
     
     return Application::EXIT_OK;
 }
