@@ -101,7 +101,7 @@ bool verifyRefreshToken(const std::string & token, const std::string & hash)
     return (hex_token == hash);
 }
 
-void deleteRefreshFromRedis(Poco::Redis::Client & redisClient, 
+void deleteRefreshFromRedis(RedisClientObjectPool & redisPool, 
                             const std::string & hashedRefreshToken, 
                             uint64_t userId)
 {
@@ -115,8 +115,10 @@ void deleteRefreshFromRedis(Poco::Redis::Client & redisClient,
         << std::format("rtk:{}", hashedRefreshToken) // KEYS[2]
         << hashedRefreshToken;                       // ARGV[1]
 
-    try {
-        Poco::Int64 result = redisClient.execute<Poco::Int64>(cmd);
+    try 
+    {
+        Poco::Redis::PooledConnection pc(redisPool, 500);
+        Poco::Int64 result = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
     } 
     catch (...) {
         throw RGT::Devkit::RGTException("Internal server error. Try repeating the request.",
@@ -124,7 +126,7 @@ void deleteRefreshFromRedis(Poco::Redis::Client & redisClient,
     }
 }
 
-void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshToken, uint64_t userId,
+void addRefreshToRedis(RedisClientObjectPool & redisPool, std::string & refreshToken, uint64_t userId,
     std::string & fingerprint, std::string & userAgent)
 {
     static const std::string script = readLuaScript("lua_scripts/add_refresh.lua");
@@ -145,8 +147,10 @@ void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshT
         << fingerprint                // ARGV[6]
         << std::to_string(userId);    // ARGV[7]
 
-    try {
-        redisClient.execute<Poco::Int64>(cmd);
+    try 
+    {
+        Poco::Redis::PooledConnection pc(redisPool, 500);
+        static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
     } 
     catch (...) {
         throw RGT::Devkit::RGTException("Internal server error. Try repeating the request.",
@@ -189,7 +193,7 @@ std::string readLuaScript(const std::string & filename)
     );
 }
 
-std::optional<std::string> getHashRefreshTokenByUserData(Poco::Redis::Client & redisClient, uint64_t userId,
+std::optional<std::string> getHashRefreshTokenByUserData(RedisClientObjectPool & redisPool, uint64_t userId,
     std::string & fingerprint, std::string & userAgent)
 {
     static const std::string script = readLuaScript("lua_scripts/get_refresh_token_hash.lua");
@@ -205,7 +209,8 @@ std::optional<std::string> getHashRefreshTokenByUserData(Poco::Redis::Client & r
 
     try 
     {
-        Poco::Redis::BulkString result = redisClient.execute<Poco::Redis::BulkString>(cmd);
+        Poco::Redis::PooledConnection pc(redisPool, 500);
+        Poco::Redis::BulkString result = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Redis::BulkString>(cmd);
         if (result.isNull()) {
             return std::nullopt;
         }

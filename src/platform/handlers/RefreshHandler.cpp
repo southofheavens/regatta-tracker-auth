@@ -7,8 +7,8 @@
 namespace RGT::Auth 
 {
 
-RefreshHandler::RefreshHandler(Poco::Data::SessionPool & sessionPool, Poco::Redis::Client & redisClient) 
-    : sessionPool_{sessionPool}, redisClient_{redisClient} {}
+RefreshHandler::RefreshHandler(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool) 
+    : sessionPool_{sessionPool}, redisPool_{redisPool} {}
 
 void RefreshHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) 
 try
@@ -70,7 +70,11 @@ try
 
     Poco::Redis::Array cmd;
     cmd << "EXISTS" << std::format("rtk:{}", hashedRefreshToken);
-    Poco::Int64 int64ResultOfCmd = redisClient_.execute<Poco::Int64>(cmd);
+    Poco::Int64 int64ResultOfCmd; 
+    {
+        Poco::Redis::PooledConnection pc(redisPool_, 500);
+        int64ResultOfCmd = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
+    }
 
     if (int64ResultOfCmd == 0) {
         throw RGT::Devkit::RGTException(std::format("Bad refresh token"), 
@@ -80,11 +84,15 @@ try
     // Сравниваем ua и fingerprint
     cmd.clear();
     cmd << "HMGET" << std::format("rtk:{}", hashedRefreshToken) << "fingerprint" << "ua" << "user_id";
-    Poco::Redis::Array rtkFileds = redisClient_.execute<Poco::Redis::Array>(cmd);
+
+    // TODO try catch ?
+    Poco::Redis::Client::Ptr prcp = redisPool_.borrowObject(500);
+    Poco::Redis::Array rtkFileds = prcp->execute<Poco::Redis::Array>(cmd);
+    redisPool_.returnObject(prcp);
 
     // Удаляем hash refresh-токена из ZSET и HSET
     Poco::UInt64 userId = std::stoull(rtkFileds.get<Poco::Redis::BulkString>(2).value());
-    Auth::Utils::deleteRefreshFromRedis(redisClient_, hashedRefreshToken, userId);
+    Auth::Utils::deleteRefreshFromRedis(redisPool_, hashedRefreshToken, userId);
     
     if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != fingerprint
         or rtkFileds.get<Poco::Redis::BulkString>(1).value() != userAgent) 
@@ -121,7 +129,7 @@ try
     std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
     refreshToken = Auth::Utils::createRefreshToken();
 
-    Auth::Utils::addRefreshToRedis(redisClient_, refreshToken, userId, fingerprint, userAgent);
+    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, fingerprint, userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);

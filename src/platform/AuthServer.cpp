@@ -21,7 +21,8 @@ void AuthServer::initialize(Application & self)
     std::string connectionString = "host=localhost port=5432 dbname=something user=postgres password=postgres";
     sessionPool_ = std::make_unique<Poco::Data::SessionPool>("PostgreSQL", connectionString, 1, 10);
 
-    redisClient_ = std::make_unique<Poco::Redis::Client>("127.0.0.1:6379");
+    using RedisClientPoolableObjectFactory = Poco::PoolableObjectFactory<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
+    redisPool_ = std::make_unique<RedisClientObjectPool>(RedisClientPoolableObjectFactory("127.0.0.1:6379"), 1, 10);
 }
 
 void AuthServer::uninitialize()
@@ -38,7 +39,7 @@ try
     
     Poco::Net::HTTPServer srv
     (
-        new Auth::AuthFactory(*sessionPool_, *redisClient_), 
+        new Auth::AuthFactory(*sessionPool_, *redisPool_), 
         svs, 
         new Poco::Net::HTTPServerParams
     );

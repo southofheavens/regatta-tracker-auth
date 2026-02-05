@@ -6,6 +6,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Data/SessionPool.h>
 #include <Poco/Redis/Client.h>
+#include <Poco/Redis/PoolableConnectionFactory.h>
 
 namespace RGT::Auth
 {
@@ -13,16 +14,18 @@ namespace RGT::Auth
 class LoginHandler : public Poco::Net::HTTPRequestHandler
 {
 public:
-    LoginHandler(Poco::Data::SessionPool & sessionPool, Poco::Redis::Client & redisClient) 
-        : sessionPool_{sessionPool}, redisClient_{redisClient} 
+    using RedisClientObjectPool = Poco::ObjectPool<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
+
+    LoginHandler(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool) 
+        : sessionPool_{sessionPool}, redisPool_{redisPool} 
     {
     }
 
     void handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) final;
 
 private:
-    Poco::Data::SessionPool & sessionPool_;
-    Poco::Redis::Client & redisClient_;
+    Poco::Data::SessionPool    & sessionPool_;
+    RedisClientObjectPool      & redisPool_;
 };
 
 } // namespace RGT::Auth

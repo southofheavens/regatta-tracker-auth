@@ -71,13 +71,13 @@ try
 
     /* Проверяем, существует ли для данных UA и fingerprint refresh-токен */
     if (std::optional<std::string> potentionalRefreshHash
-            = Auth::Utils::getHashRefreshTokenByUserData(redisClient_, userId, fingerprint, userAgent);
+            = Auth::Utils::getHashRefreshTokenByUserData(redisPool_, userId, fingerprint, userAgent);
         potentionalRefreshHash.has_value()) 
     {
         // Удаляем хэш refresh-токена из Redis (т.к. дальше для данных UA и fingerprint
         // будет создан новый refresh-токен, а уже существующий мы не можем использовать
         // потому, что в Redis хранится хэш, а не сам токен)
-        Auth::Utils::deleteRefreshFromRedis(redisClient_, potentionalRefreshHash.value(), userId);
+        Auth::Utils::deleteRefreshFromRedis(redisPool_, potentionalRefreshHash.value(), userId);
     }
 
     /**
@@ -95,7 +95,7 @@ try
     std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
     std::string refreshToken = Auth::Utils::createRefreshToken();
 
-    Auth::Utils::addRefreshToRedis(redisClient_, refreshToken, userId, fingerprint, userAgent);
+    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, fingerprint, userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);

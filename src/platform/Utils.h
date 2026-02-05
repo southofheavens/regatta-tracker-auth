@@ -9,12 +9,15 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Redis/Client.h>
+#include <Poco/Redis/PoolableConnectionFactory.h>
 
 #include <rgt/devkit/Tokens.h>
 #include <rgt/devkit/General.h>
 
 namespace RGT::Auth::Utils
 {
+
+using RedisClientObjectPool = Poco::ObjectPool<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
 
 // Лимит refresh-токенов на одного пользователя
 constexpr uint8_t                refresh_tokens_limit          = 5;
@@ -72,13 +75,13 @@ bool verifyRefreshToken(const std::string & token, const std::string & hash);
 /**
  * Удаляет хэш рефреш-токена из Redis (из ZSET + из HSET)
  */
-void deleteRefreshFromRedis(Poco::Redis::Client & redisClient, const std::string & hashedRefreshToken, uint64_t userId);
+void deleteRefreshFromRedis(RedisClientObjectPool & redisPool, const std::string & hashedRefreshToken, uint64_t userId);
 
 /**
  * Хэширует рефреш-токен и добавляет хэш в Redis (в ZSET + в HSET). Если превышен лимит рефреш-токенов на
  * пользователя, то удаляет самый старый рефреш-токен 
  */
-void addRefreshToRedis(Poco::Redis::Client & redisClient, std::string & refreshToken, uint64_t userId,
+void addRefreshToRedis(RedisClientObjectPool & redisPool, std::string & refreshToken, uint64_t userId,
     std::string & fingerprint, std::string & userAgent);
 
 /**
@@ -157,7 +160,7 @@ std::string readLuaScript(const std::string & filename);
 
 // Проверяет, есть ли для данных fingerprint и UA refresh-токен. Если да, то возвращает его хэш.
 // В противном случае возвращает std::nullopt 
-std::optional<std::string> getHashRefreshTokenByUserData(Poco::Redis::Client & redisClient, uint64_t userId,
+std::optional<std::string> getHashRefreshTokenByUserData(RedisClientObjectPool & redisPool, uint64_t userId,
     std::string & fingerprint, std::string & userAgent);
 
 } // namespace RGT::Auth::Utils

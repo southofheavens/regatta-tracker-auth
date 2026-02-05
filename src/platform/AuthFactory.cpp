@@ -11,13 +11,13 @@ Poco::Net::HTTPRequestHandler * AuthFactory::createRequestHandler(const Poco::Ne
     if (method == "POST")
     {
         if (uri == "/login") {
-            return new RGT::Auth::LoginHandler(sessionPool_, redisClient_);
+            return new RGT::Auth::LoginHandler(sessionPool_, redisPool_);
         }
         else if (uri == "/register") {
             return new RGT::Auth::RegisterHandler(sessionPool_);
         }
         else if (uri == "/refresh") {
-            return new RGT::Auth::RefreshHandler(sessionPool_, redisClient_);
+            return new RGT::Auth::RefreshHandler(sessionPool_, redisPool_);
         }
         else {
             return new RGT::Auth::ErrorHandler();
