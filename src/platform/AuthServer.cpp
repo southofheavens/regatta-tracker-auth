@@ -26,7 +26,7 @@ std::unique_ptr<Poco::Data::SessionPool> connectToPsql(const Poco::Util::Layered
     );
 
     std::unique_ptr<Poco::Data::SessionPool> sessionPool = std::make_unique<Poco::Data::SessionPool>("PostgreSQL", 
-        connectionString, cfg.getUInt16("psql.minsessions", 10), cfg.getUInt16("psql.maxsessions", 10));
+        connectionString, cfg.getUInt16("psql.min_sessions", 10), cfg.getUInt16("psql.max_sessions", 10));
 
     try 
     {
@@ -68,8 +68,8 @@ std::unique_ptr<RGT::Auth::AuthServer::RedisClientObjectPool> connectToRedis(con
                 cfg.getString("redis.port", "6379")
             )
         ), 
-        cfg.getUInt16("redis.minsessions", 10), 
-        cfg.getUInt16("redis.maxsessions", 10)
+        cfg.getUInt16("redis.min_sessions", 10), 
+        cfg.getUInt16("redis.max_sessions", 10)
     );
 
     try
@@ -102,8 +102,8 @@ namespace RGT::Auth
 
 void AuthServer::initialize(Poco::Util::Application & self)
 {
-    Poco::Util::ServerApplication::loadConfiguration();
-    Poco::Util::ServerApplication::initialize(self);
+    loadConfiguration();
+    initialize(self);
 
     if (sodium_init() < 0) {
         throw Poco::Exception("Failed to initialize libsodium");
@@ -126,11 +126,13 @@ void AuthServer::uninitialize()
 int AuthServer::main(const std::vector<std::string>&)
 try
 {
-    Poco::Net::ServerSocket svs(8080);
+    Poco::Util::LayeredConfiguration & cfg = AuthServer::config();
+
+    Poco::Net::ServerSocket svs(cfg.getUInt16("server.port", 8080));
     
     Poco::Net::HTTPServer srv
     (
-        new Auth::AuthFactory(*sessionPool_, *redisPool_), 
+        new Auth::AuthFactory(*sessionPool_, *redisPool_, cfg), 
         svs, 
         new Poco::Net::HTTPServerParams
     );
@@ -143,12 +145,12 @@ try
     
     return Application::EXIT_OK;
 }
-catch (const Poco::Exception& e) 
+catch (const Poco::Exception & e) 
 {
     std::cerr << e.displayText() << '\n';
     return Application::EXIT_SOFTWARE;
 }
-catch (const std::exception& e) 
+catch (const std::exception & e) 
 {
     std::cerr << e.what() << '\n';
     return Application::EXIT_SOFTWARE;

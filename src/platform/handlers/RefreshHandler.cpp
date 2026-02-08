@@ -7,9 +7,6 @@
 namespace RGT::Auth 
 {
 
-RefreshHandler::RefreshHandler(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool) 
-    : sessionPool_{sessionPool}, redisPool_{redisPool} {}
-
 void RefreshHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) 
 try
 {
@@ -72,7 +69,7 @@ try
     cmd << "EXISTS" << std::format("rtk:{}", hashedRefreshToken);
     Poco::Int64 int64ResultOfCmd; 
     {
-        Poco::Redis::PooledConnection pc(redisPool_, 500);
+        Poco::Redis::PooledConnection pc(redisPool_, cfg_.getUInt16("pooled_connection_timeout", 500));
         int64ResultOfCmd = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
     }
 
@@ -86,7 +83,7 @@ try
     cmd << "HMGET" << std::format("rtk:{}", hashedRefreshToken) << "fingerprint" << "ua" << "user_id";
 
     // TODO try catch ?
-    Poco::Redis::Client::Ptr prcp = redisPool_.borrowObject(500);
+    Poco::Redis::Client::Ptr prcp = redisPool_.borrowObject(cfg_.getUInt16("pooled_connection_timeout", 500));
     Poco::Redis::Array rtkFileds = prcp->execute<Poco::Redis::Array>(cmd);
     redisPool_.returnObject(prcp);
 

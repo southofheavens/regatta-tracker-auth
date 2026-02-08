@@ -23,6 +23,7 @@
 #include <Poco/SHA2Engine.h>
 #include <Poco/DigestStream.h>
 #include <Poco/Redis/Command.h>
+#include <Poco/Util/Application.h>
 
 namespace RGT::Auth::Utils
 {
