@@ -103,7 +103,7 @@ namespace RGT::Auth
 void AuthServer::initialize(Poco::Util::Application & self)
 {
     loadConfiguration();
-    initialize(self);
+    ServerApplication::initialize(self);
 
     if (sodium_init() < 0) {
         throw Poco::Exception("Failed to initialize libsodium");

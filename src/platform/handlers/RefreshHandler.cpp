@@ -4,13 +4,33 @@
 #include <Poco/StreamCopier.h>
 #include <Poco/JSON/Parser.h>
 
-namespace RGT::Auth 
+namespace
 {
 
-void RefreshHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) 
-try
+// Структура для содержимого запроса (заголовки + тело), которое
+// необходимо для обработки запроса
+struct RequestPayload
 {
-    // Пробуем получить refresh token из куки
+    std::string refreshToken;
+    std::string userAgent;
+    std::string fingerprint;
+};
+
+/// @brief Валидирует запрос и извлекает из него RequestPayload
+/// @param req ссылка на запрос
+/// @return RequestPayload
+/// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
+///        отсутствует поле в запросе и т.д.)
+RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+{
+    Poco::JSON::Object::Ptr jsonObject = nullptr;
+
+    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
+        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+
+    // Пытаемся извлечь из запроса refresh-токен
     Poco::Net::NameValueCollection cookies;
     req.getCookies(cookies); 
 
@@ -21,49 +41,75 @@ try
     catch (Poco::Exception & e)
     {
         if (req.getContentType().find("application/json") == std::string::npos) {
-            throw RGT::Devkit::RGTException("Content-Type must be application/json",
+            throw RGT::Devkit::RGTException("Refresh token missing in headers; request body is not application/json",
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
 
-        std::string jsonBody;
-        Poco::StreamCopier::copyToString(req.stream(), jsonBody);
+        jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
         
-        Poco::JSON::Parser parser;
-        Poco::Dynamic::Var result = parser.parse(jsonBody);
-        Poco::JSON::Object::Ptr jsonObject = result.extract<Poco::JSON::Object::Ptr>();
-        
-        if (not jsonObject->has("refresh_token")) {
-            throw RGT::Devkit::RGTException("Expected to receive refresh token "
-                "in the cookie/request body",
+        try {
+            refreshToken = jsonObject->get("refresh_token").extract<std::string>();
+        }
+        catch (...) {
+            throw RGT::Devkit::RGTException("Expected to receive refresh token in the cookie/request body",
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
-
-        refreshToken = (jsonObject->get("refresh_token")).convert<std::string>();
     }
 
-    /* ua читаем только из заголовка */
-    if (not req.has("User-Agent")) {
+    // Пытаемся извлечь из запроса UA. Читаем только из заголовка
+    std::string userAgent;
+    try {
+        userAgent = req.get("User-Agent");
+    }
+    catch (...) {
         throw RGT::Devkit::RGTException(std::format("User-Agent header was not received"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
-    std::string userAgent = req.get("User-Agent");
 
-    /* Если заголовок Fingerprint пуст, пытаемся считать fingerprint из тела запроса */
-    Poco::JSON::Object::Ptr jsonObject = Auth::Utils::extractJsonObjectFromRequest(req);
+    // Пытаемся извлечь из запроса fingerprint
     std::string fingerprint;
-    if (not req.has("X-Fingerprint"))
-    {
-        if (not jsonObject->has("fingerprint")) {
-            throw RGT::Devkit::RGTException(std::format("Expected fingerprint from json body or X-Fingerprint header"), 
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-        fingerprint = (jsonObject->get("fingerprint")).extract<std::string>();
-    }
-    else {
+    try {
         fingerprint = req.get("X-Fingerprint");
     }
+    catch (...) 
+    {
+        if (req.getContentType().find("application/json") == std::string::npos) {
+            throw RGT::Devkit::RGTException("Fingerprint missing in headers; request body is not application/json",
+                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+        }
+
+        if (jsonObject.isNull()) {
+            jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
+        }
+
+        try {
+            fingerprint = jsonObject->get("fingerprint").extract<std::string>();
+        }
+        catch (...) {
+            throw RGT::Devkit::RGTException("Expected to receive fingerprint in the headers/request body",
+                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+        }
+    }
+
+    return RequestPayload
+    {
+        .refreshToken = refreshToken,
+        .userAgent = userAgent,
+        .fingerprint = fingerprint
+    };
+}
+
+} // namespace
+
+namespace RGT::Auth 
+{
+
+void RefreshHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) 
+try
+{
+    RequestPayload rp = validateRequestAndExtractPayload(req, cfg_);
     
-    std::string hashedRefreshToken = Auth::Utils::hashRefreshToken(refreshToken);
+    std::string hashedRefreshToken = Auth::Utils::hashRefreshToken(rp.refreshToken);
 
     Poco::Redis::Array cmd;
     cmd << "EXISTS" << std::format("rtk:{}", hashedRefreshToken);
@@ -91,8 +137,8 @@ try
     Poco::UInt64 userId = std::stoull(rtkFileds.get<Poco::Redis::BulkString>(2).value());
     Auth::Utils::deleteRefreshFromRedis(redisPool_, hashedRefreshToken, userId);
     
-    if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != fingerprint
-        or rtkFileds.get<Poco::Redis::BulkString>(1).value() != userAgent) 
+    if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != rp.fingerprint
+        or rtkFileds.get<Poco::Redis::BulkString>(1).value() != rp.userAgent) 
     {
         throw RGT::Devkit::RGTException(std::format("Refresh token used from unauthorized device"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
@@ -124,9 +170,9 @@ try
 
     // Генерируем access и refresh токены
     std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
-    refreshToken = Auth::Utils::createRefreshToken();
+    std::string refreshToken = Auth::Utils::createRefreshToken();
 
-    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, fingerprint, userAgent);
+    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, rp.fingerprint, rp.userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);
@@ -147,6 +193,12 @@ catch (const RGT::Devkit::RGTException & e)
     res.setStatusAndReason(e.status());
     RGT::Devkit::sendJsonResponse(res, "error", e.what());
 }
+#ifdef __RGT_DEBUG__
+catch (const std::exception & e)
+{
+    RGT::Devkit::sendJsonResponse(res, "error", e.what());
+}
+#endif
 catch (...)
 {
     res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);

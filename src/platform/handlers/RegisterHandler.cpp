@@ -1,6 +1,30 @@
 #include <handlers/RegisterHandler.h>
 #include <Utils.h>
 
+namespace
+{
+
+// Структура для содержимого запроса (заголовки + тело), которое
+// необходимо для обработки запроса
+struct RequestPayload
+{
+    
+};
+
+/// @brief Валидирует запрос и извлекает из него RequestPayload
+/// @param req ссылка на запрос
+/// @return RequestPayload
+/// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
+///        отсутствует поле в запросе и т.д.)
+RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+{
+    Poco::JSON::Object::Ptr jsonObject = nullptr;
+
+    
+}
+
+} // namespace
+
 namespace RGT::Auth
 {
 

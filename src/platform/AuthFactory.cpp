@@ -11,7 +11,7 @@ Poco::Net::HTTPRequestHandler * AuthFactory::createRequestHandler(const Poco::Ne
     if (method == "POST")
     {
         if (uri == "/login") {
-            return new RGT::Auth::LoginHandler(sessionPool_, redisPool_);
+            return new RGT::Auth::LoginHandler(sessionPool_, redisPool_, cfg_);
         }
         else if (uri == "/register") {
             return new RGT::Auth::RegisterHandler(sessionPool_, cfg_);

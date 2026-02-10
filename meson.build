@@ -61,7 +61,8 @@ executable('rgt-auth',
   src_files,
   include_directories: include_dirs,
   dependencies: all_deps,
-  cpp_args: ['-std=c++20']
+  cpp_args: ['-std=c++20'],
+  link_args: ['-Wl,-rpath,/usr/local/lib']
 )
 
 # DYLD_LIBRARY_PATH=/usr/local/lib ./build/rgt-auth
