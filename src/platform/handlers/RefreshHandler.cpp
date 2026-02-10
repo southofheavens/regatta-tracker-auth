@@ -78,6 +78,7 @@ RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & r
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
 
+        // TODO вынести перед началом блока try catch ? 
         if (jsonObject.isNull()) {
             jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
         }
