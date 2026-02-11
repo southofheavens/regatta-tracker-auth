@@ -16,7 +16,7 @@ struct RequestPayload
     std::string fingerprint;
 };
 
-/// @brief Извлекает из запроса содержимое, необходимое для его обработки
+/// @brief Валидирует запрос и извлекает содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 

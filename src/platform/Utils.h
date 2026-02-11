@@ -28,9 +28,6 @@ constexpr std::chrono::seconds   refresh_token_validity_period = std::chrono::se
 // Секретный ключ для подписи 
 const     std::string            key                           = "secret_key";
 // 
-const std::array<std::string, 2> userRoles = {"Participant", "Judge"};
-
-
 
 /**
  * @brief Хэширует пароль используя Argon2 алгоритм

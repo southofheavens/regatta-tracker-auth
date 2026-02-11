@@ -5,102 +5,6 @@
 namespace
 {
 
-/// Минимально допустимая длина логина
-constexpr uint8_t minimum_login_length = 3;
-/// Минимально допустимая длина пароля
-constexpr uint8_t minimum_password_length = 8;
-
-/// @brief Результат валидации логина
-enum class ValidateLoginResult : uint8_t 
-{
-    CORRECT,           // Логин удовлетворяет требованиям
-    INVALID_CHARACTER, // Обнаружен недопустимый символ
-    INVALID_LENGTH     // Логин слишком короткий. Допустим логин от 3 символов
-};
-
-/// @brief Проверка удовлетворяет ли логин требованиям
-/// @param login логин
-/// @return ValidateLoginResult
-/// @note Требования к логину:
-/// @note - обязан содержать буквы латинского алфавита и может содержать цифры
-/// @note - минимально допустимая длина - 3 символа
-/// @details Чувствителен к регистру
-ValidateLoginResult validateLogin(const std::string & login)
-{
-    if (login.length() < minimum_login_length) {
-        return ValidateLoginResult::INVALID_LENGTH;
-    }
-
-    for (const unsigned char & c : login)
-    {
-        if (not std::isalnum(c)) {
-            return ValidateLoginResult::INVALID_CHARACTER;
-        }
-    }
-    return ValidateLoginResult::CORRECT;
-}
-
-/// @brief Результат валидации пароля
-enum class ValidatePasswordResult : uint8_t 
-{
-    CORRECT,                // Пароль удовлетворяет требованиям
-    INVALID_CHARACTER,      // Обнаружен недопустимый символ
-    INVALID_LENGTH,         // Пароль слишком короткий. Допустим пароль от 8 символов
-    MISSING_CAPITAL_LETTER, // Отсутствует заглавная буква
-    MISSING_SPECIAL_CHAR    // Отсутствует спецсимвол
-};
-
-/// @brief Проверка удовлетворяет ли пароль требованиям 
-/// @param password пароль
-/// @return ValidatePasswordResult
-/// @note Требования к паролю:
-/// @note - может состоять из букв латинского алфавита, цифр и спецсимволов (~, !, @, #, $, &, *, -, _)
-/// @note - обязан содержать хотя бы одну заглавную букву и хотя бы один спецсимвол
-/// @note - минимально допустимая длина - 8 символов
-ValidatePasswordResult validatePassword(const std::string & password)
-{
-    static std::unordered_set<char> specialCharacters = 
-    {
-        '~', '!', '@', '#', '$', '&', '*', '-', '_'
-    };
-    
-    if (password.length() < minimum_password_length) {
-        return ValidatePasswordResult::INVALID_LENGTH;
-    }
-
-    bool hasCapital = false;
-    bool hasSpecialChar = false;
-    for (const unsigned char & c : password)
-    {
-        if (isalpha(c))
-        {
-            if (isupper(c)) {
-                hasCapital = true;
-            }
-        }
-        else if (isdigit(c)) {
-            continue;
-        }
-        else 
-        {
-            if (specialCharacters.find(c) != specialCharacters.end()) {
-                hasSpecialChar = true;
-            }
-            else {
-                return ValidatePasswordResult::INVALID_CHARACTER;
-            }
-        }
-    }
-
-    if (not hasCapital) {
-        return ValidatePasswordResult::MISSING_CAPITAL_LETTER;
-    }
-    if (not hasSpecialChar) {
-        return ValidatePasswordResult::MISSING_SPECIAL_CHAR;
-    }
-    return ValidatePasswordResult::CORRECT;
-}
-
 // Структура для содержимого запроса (заголовки + тело), которое
 // необходимо для обработки запроса
 struct RequestPayload
@@ -112,7 +16,9 @@ struct RequestPayload
     std::string password;
 };
 
-/// @brief Извлекает из запроса содержимое, необходимое для его обработки
+// TODO разбить validateRequestAndExtract... на две функции - первичная валидация и извлечение значений
+
+/// @brief Валидирует запрос и извлекает содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
@@ -175,6 +81,104 @@ RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & r
     };
 }
 
+/// @brief Проверка удовлетворяет ли логин требованиям
+/// @param login логин
+/// @note Требования к логину:
+/// @note - обязан содержать буквы латинского алфавита и может содержать цифры
+/// @note - минимально допустимая длина - 3 символа
+/// @throw RGT::Devkit::RGTException если логин не удовлетворяет требованиям
+/// @details Логин чувствителен к регистру
+void validateLogin(const std::string & login)
+{
+    /// Минимально допустимая длина логина
+    static constexpr uint8_t minimum_login_length = 3;
+
+    if (login.length() < minimum_login_length) {
+        throw RGT::Devkit::RGTException(std::format("The minimum login length is {} characters", minimum_login_length),
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+
+    for (const unsigned char & c : login)
+    {
+        if (not std::isalnum(c)) {
+            throw RGT::Devkit::RGTException("The login contains an invalid character",
+                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+        }
+    }
+}
+
+/// @brief Проверка удовлетворяет ли пароль требованиям 
+/// @param password пароль
+/// @note Требования к паролю:
+/// @note - может состоять из букв латинского алфавита, цифр и спецсимволов (~, !, @, #, $, &, *, -, _)
+/// @note - обязан содержать хотя бы одну заглавную букву и хотя бы один спецсимвол
+/// @note - минимально допустимая длина - 8 символов
+/// @throw RGT::Devkit::RGTException если пароль не удовлетворяет требованиям
+void validatePassword(const std::string & password)
+{
+    /// Минимально допустимая длина пароля
+    static constexpr uint8_t minimum_password_length = 8;
+
+    static std::unordered_set<char> specialCharacters = 
+    {
+        '~', '!', '@', '#', '$', '&', '*', '-', '_'
+    };
+    
+    if (password.length() < minimum_password_length) {
+        throw RGT::Devkit::RGTException(std::format("The minimum password length is {} characters", 
+            minimum_password_length), Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+
+    bool hasCapital = false;
+    bool hasSpecialChar = false;
+    for (const unsigned char & c : password)
+    {
+        if (isalpha(c))
+        {
+            if (isupper(c)) {
+                hasCapital = true;
+            }
+        }
+        else if (isdigit(c)) {
+            continue;
+        }
+        else 
+        {
+            if (specialCharacters.find(c) != specialCharacters.end()) {
+                hasSpecialChar = true;
+            }
+            else {
+                throw RGT::Devkit::RGTException("The password contains an invalid character",
+                    Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+            }
+        }
+    }
+
+    if (not hasCapital) {
+        throw RGT::Devkit::RGTException("The password is missing a capital letter",
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+    if (not hasSpecialChar) {
+        throw RGT::Devkit::RGTException("The password is missing a special character",
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+}
+
+/// @brief Проверка удовлетворяет ли роль требованиям 
+/// @param role роль
+/// @note Требования к роли:
+/// @note - роль может быть либо 'Participant' (участник), либо 'Judge' (судья)
+/// @throw RGT::Devkit::RGTException если роль не удовлетворяет требованиям
+void validateRole(const std::string & role)
+{
+    static const std::array<std::string, 2> userRoles = {"Participant", "Judge"};
+
+    if (role != userRoles[0] and role != userRoles[1]) {
+        throw RGT::Devkit::RGTException(std::format("Invalid role. Correct roles is 'Participant' and 'Judge'"), 
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+}
+
 } // namespace
 
 namespace RGT::Auth
@@ -186,10 +190,10 @@ try
     // Извлекаем из запроса содержимое, необходимое для его обработки
     RequestPayload rp = validateRequestAndExtractPayload(req, cfg_);
 
-    if (rp.role != Auth::Utils::userRoles[0] and rp.role != Auth::Utils::userRoles[1]) {
-        throw RGT::Devkit::RGTException(std::format("Invalid role. Correct roles is 'Participant' and 'Judge'"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
+    // Валидация данных, полученных от пользователя
+    validateLogin(rp.login);
+    validatePassword(rp.password);
+    validateRole(rp.role);
 
     Poco::Data::Session session = sessionPool_.get();
 
