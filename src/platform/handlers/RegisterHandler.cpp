@@ -1,15 +1,110 @@
 #include <handlers/RegisterHandler.h>
 #include <Utils.h>
+#include <cctype>
 
 namespace
 {
+
+/// Минимально допустимая длина логина
+constexpr uint8_t minimum_login_length = 3;
+/// Минимально допустимая длина пароля
+constexpr uint8_t minimum_password_length = 8;
+
+/// @brief Результат валидации логина
+enum class ValidateLoginResult : uint8_t 
+{
+    CORRECT,           // Логин удовлетворяет требованиям
+    INVALID_CHARACTER, // Обнаружен недопустимый символ
+    INVALID_LENGTH     // Логин слишком короткий. Допустим логин от 3 символов
+};
+
+/// @brief Проверка удовлетворяет ли логин требованиям
+/// @param login логин
+/// @return ValidateLoginResult
+/// @note Требования к логину:
+/// @note - обязан содержать буквы латинского алфавита и может содержать цифры
+/// @note - минимально допустимая длина - 3 символа
+/// @details Чувствителен к регистру
+ValidateLoginResult validateLogin(const std::string & login)
+{
+    if (login.length() < minimum_login_length) {
+        return ValidateLoginResult::INVALID_LENGTH;
+    }
+
+    for (const unsigned char & c : login)
+    {
+        if (not std::isalnum(c)) {
+            return ValidateLoginResult::INVALID_CHARACTER;
+        }
+    }
+    return ValidateLoginResult::CORRECT;
+}
+
+/// @brief Результат валидации пароля
+enum class ValidatePasswordResult : uint8_t 
+{
+    CORRECT,                // Пароль удовлетворяет требованиям
+    INVALID_CHARACTER,      // Обнаружен недопустимый символ
+    INVALID_LENGTH,         // Пароль слишком короткий. Допустим пароль от 8 символов
+    MISSING_CAPITAL_LETTER, // Отсутствует заглавная буква
+    MISSING_SPECIAL_CHAR    // Отсутствует спецсимвол
+};
+
+/// @brief Проверка удовлетворяет ли пароль требованиям 
+/// @param password пароль
+/// @return ValidatePasswordResult
+/// @note Требования к паролю:
+/// @note - может состоять из букв латинского алфавита, цифр и спецсимволов (~, !, @, #, $, &, *, -, _)
+/// @note - обязан содержать хотя бы одну заглавную букву и хотя бы один спецсимвол
+/// @note - минимально допустимая длина - 8 символов
+ValidatePasswordResult validatePassword(const std::string & password)
+{
+    static std::unordered_set<char> specialCharacters = 
+    {
+        '~', '!', '@', '#', '$', '&', '*', '-', '_'
+    };
+    
+    if (password.length() < minimum_password_length) {
+        return ValidatePasswordResult::INVALID_LENGTH;
+    }
+
+    bool hasCapital = false;
+    bool hasSpecialChar = false;
+    for (const unsigned char & c : password)
+    {
+        if (isalpha(c))
+        {
+            if (isupper(c)) {
+                hasCapital = true;
+            }
+        }
+        else if (isdigit(c)) {
+            continue;
+        }
+        else 
+        {
+            if (specialCharacters.find(c) != specialCharacters.end()) {
+                hasSpecialChar = true;
+            }
+            else {
+                return ValidatePasswordResult::INVALID_CHARACTER;
+            }
+        }
+    }
+
+    if (not hasCapital) {
+        return ValidatePasswordResult::MISSING_CAPITAL_LETTER;
+    }
+    if (not hasSpecialChar) {
+        return ValidatePasswordResult::MISSING_SPECIAL_CHAR;
+    }
+    return ValidatePasswordResult::CORRECT;
+}
 
 // Структура для содержимого запроса (заголовки + тело), которое
 // необходимо для обработки запроса
 struct RequestPayload
 {
-    std::string userAgent;
-    std::string fingerprint;
     std::string name;
     std::string surname;
     std::string role;
@@ -17,7 +112,7 @@ struct RequestPayload
     std::string password;
 };
 
-/// @brief Валидирует запрос и извлекает из него RequestPayload
+/// @brief Извлекает из запроса содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
@@ -39,37 +134,6 @@ RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & r
     if (req.getContentType().find("application/json") == std::string::npos) {
         throw RGT::Devkit::RGTException("Content-Type must be application/json", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    // Пытаемся извлечь из запроса UA. Читаем только из заголовка
-    std::string userAgent;
-    try {
-        userAgent = req.get("User-Agent");
-    }
-    catch (...) {
-        throw RGT::Devkit::RGTException(std::format("User-Agent header was not received"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
-    // Пытаемся извлечь из запроса fingerprint
-    std::string fingerprint;
-    try {
-        fingerprint = req.get("X-Fingerprint");
-    }
-    catch (...) 
-    {
-        if (req.getContentType().find("application/json") == std::string::npos) {
-            throw RGT::Devkit::RGTException("Fingerprint missing in headers; request body is not application/json",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-
-        try {
-            fingerprint = jsonObject->get("fingerprint").extract<std::string>();
-        }
-        catch (...) {
-            throw RGT::Devkit::RGTException("Expected to receive fingerprint in the headers/request body",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
     }
 
     std::map<std::string, Poco::Dynamic::Var> expectedKeysAndPotentialValues = 
@@ -103,8 +167,6 @@ RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & r
 
     return RequestPayload
     {
-        .userAgent = userAgent,
-        .fingerprint = fingerprint,
         .name = keysAndStringValues["name"],
         .surname = keysAndStringValues["surname"],
         .role = keysAndStringValues["role"],
@@ -121,6 +183,7 @@ namespace RGT::Auth
 void RegisterHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res)
 try
 {
+    // Извлекаем из запроса содержимое, необходимое для его обработки
     RequestPayload rp = validateRequestAndExtractPayload(req, cfg_);
 
     if (rp.role != Auth::Utils::userRoles[0] and rp.role != Auth::Utils::userRoles[1]) {
@@ -141,7 +204,8 @@ try
     stmt.execute();
     
     if (userExists != 0) {
-        throw Poco::Exception("User already exists");
+        throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", rp.login), 
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
     // Добавляем данные пользователя в БД

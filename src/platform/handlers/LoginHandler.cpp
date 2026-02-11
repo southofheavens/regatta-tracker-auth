@@ -14,7 +14,7 @@ struct RequestPayload
     std::string password;
 };
 
-/// @brief Валидирует запрос и извлекает из него RequestPayload
+/// @brief Извлекает из запроса содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
