@@ -1,13 +1,24 @@
 gtest_dep = dependency('gtest', static: false)
+gtest_main_dep = dependency('gtest_main', required: true)
 
 test_sources = files('tests.cpp')
+
+poco_foundation = cpp.find_library('PocoFoundation', required: true)
+poco_util = cpp.find_library('PocoUtil', required: true)
+poco_json = cpp.find_library('PocoJSON', required: true)
+poco_net = cpp.find_library('PocoNet', required: true)
 
 rgt_auth_tests = executable(
   'rgt-auth-tests',
   test_sources,
-  dependencies: [gtest_dep],
+  dependencies: [gtest_dep, gtest_main_dep, poco_foundation, poco_util, poco_json, poco_net],
   include_directories: include_directories('../src/platform'),
   install: false,
+  link_args: [
+    '-Wl,-rpath,@executable_path/../lib',      # ищет рядом с бинарником
+    '-Wl,-rpath,/opt/homebrew/lib',            # Homebrew на Apple Silicon
+    '-Wl,-rpath,/usr/local/lib',               # Homebrew на Intel Mac
+  ]
 )
 
 test(

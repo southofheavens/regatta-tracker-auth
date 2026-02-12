@@ -1,4 +1,4 @@
-project('rgt-auth', 'cpp')
+project('rgt-auth', 'cpp', default_options: ['cpp_std=c++20'])
 
 cpp = meson.get_compiler('cpp')
 
@@ -61,10 +61,14 @@ executable('rgt-auth',
   src_files,
   include_directories: include_dirs,
   dependencies: all_deps,
-  cpp_args: ['-std=c++20'],
-  link_args: ['-Wl,-rpath,/usr/local/lib']
+    link_args: [
+    '-Wl,-rpath,@executable_path/../lib',      # ищет рядом с бинарником
+    '-Wl,-rpath,/opt/homebrew/lib',            # Homebrew на Apple Silicon
+    '-Wl,-rpath,/usr/local/lib',               # Homebrew на Intel Mac
+  ]
 )
 
 subdir('tests')
 
 # DYLD_LIBRARY_PATH=/usr/local/lib ./build/rgt-auth
+# DYLD_LIBRARY_PATH=/usr/local/lib ./build/tests/rgt-auth-tests
