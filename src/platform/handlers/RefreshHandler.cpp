@@ -7,6 +7,18 @@
 namespace
 {
 
+/// @brief Примитивная валидация запроса
+/// @param req ссылка на запрос
+/// @param cfg ссылка на конфиг
+/// @throw RGT::Devkit::RGTException если запрос некорректен
+void primitiveRequestValidate(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+{
+    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
+        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+}
+
 // Структура для содержимого запроса (заголовки + тело), которое
 // необходимо для обработки запроса
 struct RequestPayload
@@ -16,19 +28,15 @@ struct RequestPayload
     std::string fingerprint;
 };
 
-/// @brief Валидирует запрос и извлекает содержимое, необходимое для его обработки
+/// @brief Извлекает из запроса содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
+/// @param cfg ссылка на конфиг
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
 ///        отсутствует поле в запросе и т.д.)
-RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
 {
     Poco::JSON::Object::Ptr jsonObject = nullptr;
-
-    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
-        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
 
     // Пытаемся извлечь из запроса refresh-токен
     Poco::Net::NameValueCollection cookies;
@@ -78,7 +86,6 @@ RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & r
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
 
-        // TODO вынести перед началом блока try catch ? 
         if (jsonObject.isNull()) {
             jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
         }
@@ -108,7 +115,10 @@ namespace RGT::Auth
 void RefreshHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) 
 try
 {
-    RequestPayload rp = validateRequestAndExtractPayload(req, cfg_);
+    // Проводим примитивную валидацию запроса 
+    primitiveRequestValidate(req, cfg_);
+    // Извлекаем из запроса содержимое, необходимое для его обработки
+    RequestPayload rp = extractPayloadFromRequest(req, cfg_);
     
     std::string hashedRefreshToken = Auth::Utils::hashRefreshToken(rp.refreshToken);
 

@@ -5,6 +5,33 @@
 namespace
 {
 
+/// @brief Примитивная валидация запроса
+/// @param req ссылка на запрос
+/// @param cfg ссылка на конфиг
+/// @throw RGT::Devkit::RGTException если запрос некорректен
+void primitiveRequestValidate(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+{
+    if (req.getContentLength() == Poco::Net::HTTPMessage::UNKNOWN_CONTENT_LENGTH) {
+        throw RGT::Devkit::RGTException("Content length is unknown", 
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+    }
+
+    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
+        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+
+    if (req.getContentLength() == 0) {
+        throw RGT::Devkit::RGTException("Content length is zero", 
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+    }
+
+    if (req.getContentType().find("application/json") == std::string::npos) {
+        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+    }
+}
+
 // Структура для содержимого запроса (заголовки + тело), которое
 // необходимо для обработки запроса
 struct RequestPayload
@@ -16,31 +43,15 @@ struct RequestPayload
     std::string password;
 };
 
-// TODO разбить validateRequestAndExtract... на две функции - первичная валидация и извлечение значений
-
-/// @brief Валидирует запрос и извлекает содержимое, необходимое для его обработки
+/// @brief Извлекает из запроса содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
+/// @param cfg ссылка на конфиг
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
 ///        отсутствует поле в запросе и т.д.)
-RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
 {
     Poco::JSON::Object::Ptr jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
-
-    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
-        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentLength() == 0) {
-        throw RGT::Devkit::RGTException("Empty request body", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentType().find("application/json") == std::string::npos) {
-        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
 
     std::map<std::string, Poco::Dynamic::Var> expectedKeysAndPotentialValues = 
     {
@@ -187,8 +198,10 @@ namespace RGT::Auth
 void RegisterHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res)
 try
 {
+    // Проводим примитивную валидацию запроса 
+    primitiveRequestValidate(req, cfg_);
     // Извлекаем из запроса содержимое, необходимое для его обработки
-    RequestPayload rp = validateRequestAndExtractPayload(req, cfg_);
+    RequestPayload rp = extractPayloadFromRequest(req, cfg_);
 
     // Валидация данных, полученных от пользователя
     validateLogin(rp.login);

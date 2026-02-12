@@ -4,6 +4,33 @@
 namespace
 {
 
+/// @brief Примитивная валидация запроса
+/// @param req ссылка на запрос
+/// @param cfg ссылка на конфиг
+/// @throw RGT::Devkit::RGTException если запрос некорректен
+void primitiveRequestValidate(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+{
+    if (req.getContentLength() == Poco::Net::HTTPMessage::UNKNOWN_CONTENT_LENGTH) {
+        throw RGT::Devkit::RGTException("Content length is unknown", 
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+    }
+
+    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
+        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
+
+    if (req.getContentLength() == 0) {
+        throw RGT::Devkit::RGTException("Content length is zero", 
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+    }
+
+    if (req.getContentType().find("application/json") == std::string::npos) {
+        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+    }
+}
+
 // Структура для содержимого запроса (заголовки + тело), которое
 // необходимо для обработки запроса
 struct RequestPayload
@@ -14,29 +41,15 @@ struct RequestPayload
     std::string password;
 };
 
-/// @brief Валидирует запрос и извлекает содержимое, необходимое для его обработки
+/// @brief Извлекает из запроса содержимое, необходимое для его обработки
 /// @param req ссылка на запрос
+/// @param cfg ссылка на конфиг
 /// @return RequestPayload
 /// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
 ///        отсутствует поле в запросе и т.д.)
-RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
 {
     Poco::JSON::Object::Ptr jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
-
-    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
-        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentLength() == 0) {
-        throw RGT::Devkit::RGTException("Empty request body", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentType().find("application/json") == std::string::npos) {
-        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
 
     // Пытаемся извлечь из запроса UA. Читаем только из заголовка
     std::string userAgent;
@@ -55,11 +68,6 @@ RequestPayload validateRequestAndExtractPayload(Poco::Net::HTTPServerRequest & r
     }
     catch (...) 
     {
-        if (req.getContentType().find("application/json") == std::string::npos) {
-            throw RGT::Devkit::RGTException("Fingerprint missing in headers; request body is not application/json",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-
         try {
             fingerprint = jsonObject->get("fingerprint").extract<std::string>();
         }
@@ -104,7 +112,10 @@ namespace RGT::Auth
 void LoginHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res)
 try
 {
-    RequestPayload rp = validateRequestAndExtractPayload(req, cfg_);
+    // Проводим примитивную валидацию запроса 
+    primitiveRequestValidate(req, cfg_);
+    // Извлекаем из запроса содержимое, необходимое для его обработки
+    RequestPayload rp = extractPayloadFromRequest(req, cfg_);
 
     /// Смотрим, есть ли пользователь с таким логином && правильно ли введён пароль,
     /// если пользователь с таким логином существует    
@@ -129,7 +140,7 @@ try
         throw RGT::Devkit::RGTException("Incorrect login or password", Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
 
-    /* Проверяем, существует ли для данных UA и fingerprint refresh-токен */
+    // Проверяем, существует ли для данных UA и fingerprint refresh-токен
     if (std::optional<std::string> potentionalRefreshHash
             = Auth::Utils::getHashRefreshTokenByUserData(redisPool_, userId, rp.fingerprint, rp.userAgent);
         potentionalRefreshHash.has_value()) 
@@ -140,9 +151,7 @@ try
         Auth::Utils::deleteRefreshFromRedis(redisPool_, potentionalRefreshHash.value(), userId);
     }
 
-    /**
-     * Формируем полезную нагрузку для access-токена
-     */
+    // Формируем полезную нагрузку для access-токена
     Devkit::Tokens::Payload jwtPayload =
     {
         .sub = userId,
@@ -151,7 +160,7 @@ try
             Auth::Utils::access_token_validity_period).time_since_epoch())
     };
 
-    /* Генерируем access и refresh токены */
+    // Генерируем access и refresh токены 
     std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
     std::string refreshToken = Auth::Utils::createRefreshToken();
 
