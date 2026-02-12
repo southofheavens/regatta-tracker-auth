@@ -65,4 +65,6 @@ executable('rgt-auth',
   link_args: ['-Wl,-rpath,/usr/local/lib']
 )
 
+subdir('tests')
+
 # DYLD_LIBRARY_PATH=/usr/local/lib ./build/rgt-auth
