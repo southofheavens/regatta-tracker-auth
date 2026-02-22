@@ -19,16 +19,6 @@ namespace RGT::Auth::Utils
 
 using RedisClientObjectPool = Poco::ObjectPool<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
 
-// Лимит refresh-токенов на одного пользователя
-constexpr uint8_t                refresh_tokens_limit          = 5;
-// Время действия access-токена
-constexpr std::chrono::seconds   access_token_validity_period  = std::chrono::seconds(15 * 60);
-// Время действия refresh-токена
-constexpr std::chrono::seconds   refresh_token_validity_period = std::chrono::seconds(30 * 24 * 60 * 60);
-// Секретный ключ для подписи 
-const     std::string            key                           = "secret_key";
-// 
-
 /**
  * @brief Хэширует пароль используя Argon2 алгоритм
  * @param password Пароль для хэширования
@@ -99,22 +89,6 @@ inline void fillRequiredFieldsFromJson(Poco::JSON::Object::Ptr jsonObject, auto 
 }
 
 /** 
- * Пытается извлечь из JSON-объекта значения для ключей, перечисленных в контейнере pairs.
- * Для каждого ключа из pairs, присутствующего в JSON, соответствующее значение обновляется.
- * Если ключ отсутствует в JSON, значение, соответствующее данному ключу, не обновляется.
- * Исключение не выбрасывается.
- */
-inline void tryFillRequiredFieldsFromJson(Poco::JSON::Object::Ptr jsonObject, auto & pairs)
-{
-    for (auto & [key, value] : pairs)
-    {
-        if (jsonObject->has(key)) {
-            value = jsonObject->get(key);
-        }
-    }
-}
-
-/** 
  * Извлекает из запроса значения для всех ключей (имён заголовков), перечисленных в контейнере
  * pairs, который хранит пары, и присваивает каждому ключу соответствующее значение. Если хотя бы один
  * заголовок отсутствует - выбрасывается исключение RGTException.
@@ -128,22 +102,6 @@ inline void fillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, au
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
         value = req.get(key);
-    }
-}
-
-/**
- * Пытается извлечь из запроса значения для ключей (имён заголовков), перечисленных в контейнере pairs.
- * Для каждого ключа из pairs, присутствующего в заголовках запроса, соответствующее значение обновляется.
- * Если ключ (имя заголовка) отсутствует в запросе, значение, соответствующее данному ключу, 
- * не обновляется. Исключение не выбрасывается.
- */
-inline void tryFillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, auto & pairs)
-{
-    for (auto & [key, value] : pairs)
-    {
-        if (req.has(key)) {
-            value = req.get(key);
-        }
     }
 }
 

@@ -109,9 +109,9 @@ void validateLogin(const std::string & login)
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
-    for (const unsigned char & c : login)
+    for (const char & c : login)
     {
-        if (not std::isalnum(c)) {
+        if (not std::isalnum(static_cast<unsigned char>(c))) {
             throw RGT::Devkit::RGTException("The login contains an invalid character",
                 Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
         }
@@ -142,20 +142,21 @@ void validatePassword(const std::string & password)
 
     bool hasCapital = false;
     bool hasSpecialChar = false;
-    for (const unsigned char & c : password)
+    for (const char & c : password)
     {
-        if (isalpha(c))
+        unsigned char unsig_c = static_cast<unsigned char>(c);
+        if (isalpha(unsig_c))
         {
-            if (isupper(c)) {
+            if (isupper(unsig_c)) {
                 hasCapital = true;
             }
         }
-        else if (isdigit(c)) {
+        else if (isdigit(unsig_c)) {
             continue;
         }
         else 
         {
-            if (specialCharacters.find(c) != specialCharacters.end()) {
+            if (specialCharacters.find(unsig_c) != specialCharacters.end()) {
                 hasSpecialChar = true;
             }
             else {

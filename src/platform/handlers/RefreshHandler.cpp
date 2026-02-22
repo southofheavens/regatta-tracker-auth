@@ -3,6 +3,7 @@
 
 #include <Poco/StreamCopier.h>
 #include <Poco/JSON/Parser.h>
+#include <Poco/Util/Application.h>
 
 namespace
 {
@@ -171,12 +172,19 @@ try
     }
 
     // Формируем полезную нагрузку для access-токена
+    Poco::UInt16 accessTokenValidityPeriod = 
+        Poco::Util::Application::instance().config().getUInt16("access_token_validity_period", 900);
     Devkit::Tokens::Payload jwtPayload =
     {
         .sub = userId,
         .role = userRole,
-        .exp = std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + 
-            Auth::Utils::access_token_validity_period).time_since_epoch())
+        .exp = std::chrono::duration_cast<std::chrono::seconds>
+        (
+            (
+                std::chrono::system_clock::now() + 
+                std::chrono::seconds(accessTokenValidityPeriod)
+            ).time_since_epoch()
+        )
     };
 
     // Генерируем access и refresh токены

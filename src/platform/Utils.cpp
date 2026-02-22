@@ -68,7 +68,7 @@ std::string createAccessToken(const RGT::Devkit::Tokens::Payload& p)
     );
     token.setExpiration(expires);
     
-    Poco::JWT::Signer signer(key);
+    Poco::JWT::Signer signer(Poco::Util::Application::instance().config().getString("signing_key"));
     return signer.sign(token, Poco::JWT::Signer::ALGO_HS256);
 }
 
@@ -140,9 +140,9 @@ void addRefreshToRedis(RedisClientObjectPool & redisPool, std::string & refreshT
         << "2"  
         << std::format("user_rtk:{}", userId)      // KEYS[1]
         << std::format("rtk:{}", hashedRefresh)    // KEYS[2]
-        << std::to_string(refresh_tokens_limit)    // ARGV[1]
-        << std::to_string(refresh_token_validity_period.count())                          // ARGV[2]
-        << std::to_string(std::chrono::system_clock::now().time_since_epoch().count())    // ARGV[3]
+        << Poco::Util::Application::instance().config().getString("refresh_tokens_limit")          // ARGV[1]
+        << Poco::Util::Application::instance().config().getString("refresh_token_validity_period") // ARGV[2]
+        << std::to_string(std::chrono::system_clock::now().time_since_epoch().count())             // ARGV[3]
         << hashedRefresh              // ARGV[4]
         << userAgent                  // ARGV[5]
         << fingerprint                // ARGV[6]
