@@ -35,7 +35,7 @@ TEST_F(ServerFixture, login_without_content_lenght)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
 
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -95,7 +95,7 @@ TEST_F(ServerFixture, login_with_incorrect_content_lenght)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
 
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -205,7 +205,7 @@ TEST_F(ServerFixture, login_without_content_type_header)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
     
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -319,7 +319,7 @@ TEST_F(ServerFixture, login_without_fingerprint)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
     
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -377,7 +377,7 @@ TEST_F(ServerFixture, login_without_user_agent_header)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
     
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -490,7 +490,7 @@ TEST_F(ServerFixture, login_with_only_password)
 
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
     
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -546,7 +546,7 @@ TEST_F(ServerFixture, login_with_correct_data_and_header_fingerprint)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
     
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -601,7 +601,7 @@ TEST_F(ServerFixture, login_with_correct_data_and_body_fingerprint)
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
     jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravlevsema");
+    jsonBody.set("password", "zhuravleVSEMA-");
     jsonBody.set("fingerprint", "some_fingerprint");
     
     // Приводим тело запроса из Poco::JSON::Object к std::string

@@ -126,7 +126,7 @@ try
         Poco::Data::Session session = sessionPool_.get();
         Poco::Data::Statement stmt(session);
 
-        stmt << "SELECT password, role, id FROM users WHERE login = $1",
+        stmt << "SELECT password_hash, role, id FROM users WHERE login = $1",
             Poco::Data::Keywords::use(rp.login),
             Poco::Data::Keywords::into(hashedPassword),
             Poco::Data::Keywords::into(userRole),

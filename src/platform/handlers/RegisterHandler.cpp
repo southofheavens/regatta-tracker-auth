@@ -229,7 +229,7 @@ try
     // Добавляем данные пользователя в БД
     std::string hashedPassword = Auth::Utils::hashPassword(rp.password);
     stmt.reset();
-    stmt << "INSERT INTO users (name, surname, role, login, password)"
+    stmt << "INSERT INTO users (name, surname, role, login, password_hash)"
         << "VALUES ($1, $2, $3 , $4, $5)",
         Poco::Data::Keywords::use(rp.name),
         Poco::Data::Keywords::use(rp.surname),

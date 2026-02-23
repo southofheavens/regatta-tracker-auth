@@ -18,11 +18,11 @@ std::unique_ptr<Poco::Data::SessionPool> connectToPsql(const Poco::Util::Layered
     std::string connectionString = std::format
     (
         "host={0} port={1} dbname={2} user={3} password={4}", 
-        cfg.getString("psql.host", "host.docker.internal"),
-        cfg.getString("psql.port", "5432"),
-        cfg.getString("psql.dbname", "something"),
-        cfg.getString("psql.user", "postgres"),
-        cfg.getString("psql.password", "postgres")
+        cfg.getString("psql.host"),
+        cfg.getString("psql.port"),
+        cfg.getString("psql.dbname"),
+        cfg.getString("psql.user"),
+        cfg.getString("psql.password")
     );
 
     std::unique_ptr<Poco::Data::SessionPool> sessionPool = std::make_unique<Poco::Data::SessionPool>("PostgreSQL", 
@@ -40,8 +40,8 @@ std::unique_ptr<Poco::Data::SessionPool> connectToPsql(const Poco::Util::Layered
             std::format
             (
                 "Connection attempt to postgresql failed with host {0} and port {1}",
-                cfg.getString("psql.host", "host.docker.internal"),
-                cfg.getString("psql.port", "5432")
+                cfg.getString("psql.host"),
+                cfg.getString("psql.port")
             )
         );
     }
@@ -64,8 +64,8 @@ std::unique_ptr<RGT::Auth::AuthServer::RedisClientObjectPool> connectToRedis(con
             std::format
             (
                 "{0}:{1}",
-                cfg.getString("redis.host", "host.docker.internal"),
-                cfg.getString("redis.port", "6379")
+                cfg.getString("redis.host"),
+                cfg.getString("redis.port")
             )
         ), 
         cfg.getUInt16("redis.min_sessions", 10), 
@@ -86,8 +86,8 @@ std::unique_ptr<RGT::Auth::AuthServer::RedisClientObjectPool> connectToRedis(con
             std::format
             (
                 "Connection attempt to redis failed with host {0} and port {1}",
-                cfg.getString("redis.host", "host.docker.internal"),
-                cfg.getString("redis.port", "6379")
+                cfg.getString("redis.host"),
+                cfg.getString("redis.port")
             )
         );
     }
