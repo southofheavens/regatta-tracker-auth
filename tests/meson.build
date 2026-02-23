@@ -1,13 +1,7 @@
 gtest_dep = dependency('gtest', static: false)
 gtest_main_dep = dependency('gtest_main', required: true)
 
-test_sources = files('login_tests/Test1.cpp',
-  'login_tests/Test2.cpp',
-  'login_tests/Test3.cpp',
-  'login_tests/Test4.cpp',
-  'login_tests/Test5.cpp',
-  'login_tests/Test6.cpp',
-  'login_tests/Test7.cpp')
+test_sources = files('LoginTests.cpp')
 
 poco_foundation = cpp.find_library('PocoFoundation', required: true)
 poco_util = cpp.find_library('PocoUtil', required: true)
