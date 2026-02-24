@@ -641,4 +641,3 @@ TEST_F(ServerFixture, login_with_correct_data_and_body_fingerprint)
 }
 
 } // namespace RGT::Auth::Tests
- 
