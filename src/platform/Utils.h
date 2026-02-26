@@ -13,6 +13,7 @@
 
 #include <rgt/devkit/Tokens.h>
 #include <rgt/devkit/General.h>
+#include <rgt/devkit/RGTException.h>
 
 namespace RGT::Auth::Utils
 {

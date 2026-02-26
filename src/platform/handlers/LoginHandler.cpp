@@ -1,6 +1,7 @@
 #include <handlers/LoginHandler.h>
 #include <Utils.h>
 #include <Poco/Util/Application.h>
+#include <rgt/devkit/RequestProcessing.h>
 
 namespace
 {
@@ -11,25 +12,9 @@ namespace
 /// @throw RGT::Devkit::RGTException если запрос некорректен
 void primitiveRequestValidate(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
 {
-    if (req.getContentLength() == Poco::Net::HTTPMessage::UNKNOWN_CONTENT_LENGTH) {
-        throw RGT::Devkit::RGTException("Content length is unknown", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
-        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentLength() == 0) {
-        throw RGT::Devkit::RGTException("Content length is zero", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentType().find("application/json") == std::string::npos) {
-        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
+    RGT::Devkit::checkContentLength(req, cfg.getUInt32("max_request_body_size", 1024 * 1024));
+    RGT::Devkit::checkContentLengthIsNull(req);
+    RGT::Devkit::checkContentType(req, "application/json");
 }
 
 // Структура для содержимого запроса (заголовки + тело), которое
@@ -53,43 +38,33 @@ RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poc
     Poco::JSON::Object::Ptr jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
 
     // Пытаемся извлечь из запроса UA. Читаем только из заголовка
-    std::string userAgent;
-    try {
-        userAgent = req.get("User-Agent");
-    }
-    catch (...) {
-        throw RGT::Devkit::RGTException(std::format("User-Agent header was not received"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
+    const std::string & userAgent = RGT::Devkit::extractValueFromHeaders(req, "User-Agent");
+    
     // Пытаемся извлечь из запроса fingerprint
     std::string fingerprint;
     try {
-        fingerprint = req.get("X-Fingerprint");
+        fingerprint = RGT::Devkit::extractValueFromHeaders(req, "X-Fingerprint");
     }
     catch (...) 
     {
+        Poco::Dynamic::Var dynamicVarFingerprint = RGT::Devkit::extractValueFromJson(jsonObject, "fingerprint");
         try {
-            fingerprint = jsonObject->get("fingerprint").extract<std::string>();
+            fingerprint = dynamicVarFingerprint.extract<std::string>();
         }
         catch (...) {
-            throw RGT::Devkit::RGTException("Expected to receive fingerprint in the headers/request body",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+            throw RGT::Devkit::RGTException("Fingerprint type is not equal string", 
+                Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST); 
         }
     }
 
-    std::map<std::string, Poco::Dynamic::Var> expectedKeysAndPotentialValues = 
-    {
-        {"login", {}},
-        {"password", {}}
-    };
-    RGT::Auth::Utils::fillRequiredFieldsFromJson(jsonObject, expectedKeysAndPotentialValues);
+    Poco::Dynamic::Var dvLogin = RGT::Devkit::extractValueFromJson(jsonObject, "login");
+    Poco::Dynamic::Var dvPassword = RGT::Devkit::extractValueFromJson(jsonObject, "password");
 
     std::string login, password;
     try 
     {
-        login = expectedKeysAndPotentialValues["login"].extract<std::string>();
-        password = expectedKeysAndPotentialValues["password"].extract<std::string>();
+        login = dvLogin.extract<std::string>();
+        password = dvLogin.extract<std::string>();
     }
     catch (...) {
         throw RGT::Devkit::RGTException("Login and password must be presented in string format",

@@ -69,6 +69,3 @@ executable('rgt-auth',
 )
 
 subdir('tests')
-
-# DYLD_LIBRARY_PATH=/usr/local/lib ./build/rgt-auth
-# DYLD_LIBRARY_PATH=/usr/local/lib ./build/tests/rgt-auth-tests
