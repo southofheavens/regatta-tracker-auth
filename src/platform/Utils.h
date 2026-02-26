@@ -105,11 +105,6 @@ inline void fillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, au
     }
 }
 
-/**
- * Извлекает из запроса JSON object и возвращает указатель на него
- */
-Poco::JSON::Object::Ptr extractJsonObjectFromRequest(Poco::Net::HTTPServerRequest & req);
-
 // Считывает lua-script из файла с именем filename и возвращает его
 std::string readLuaScript(const std::string & filename);
 

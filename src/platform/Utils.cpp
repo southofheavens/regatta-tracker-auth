@@ -159,27 +159,6 @@ void addRefreshToRedis(RedisClientObjectPool & redisPool, std::string & refreshT
     }
 }
 
-Poco::JSON::Object::Ptr extractJsonObjectFromRequest(Poco::Net::HTTPServerRequest & req)
-{    
-    Poco::JSON::Parser parser;
-
-    Poco::Dynamic::Var result;
-    try {
-        result = parser.parse(req.stream());
-    }
-    catch (...) {
-        throw RGT::Devkit::RGTException("Received invalid json", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (result.type() != typeid(Poco::JSON::Object::Ptr)) {
-        throw RGT::Devkit::RGTException("Expected JSON object, not array", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    return result.extract<Poco::JSON::Object::Ptr>();
-}
-
 std::string readLuaScript(const std::string & filename) 
 {
     std::ifstream file(filename);
