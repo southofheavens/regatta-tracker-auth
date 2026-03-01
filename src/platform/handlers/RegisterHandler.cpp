@@ -118,7 +118,7 @@ void RegisterHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & reques
 
 std::any RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
 {
-    Poco::JSON::Object::Ptr jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(request);
+    Poco::JSON::Object::Ptr jsonObject = HTTPRequestHandler::extractJsonObjectFromRequest(request);
 
     std::map<std::string, Poco::Dynamic::Var> expectedKeysAndPotentialValues = 
     {
