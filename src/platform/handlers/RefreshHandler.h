@@ -1,6 +1,8 @@
 #ifndef __REFRESH_HANDLER_H__
 #define __REFRESH_HANDLER_H__
 
+#include <rgt/devkit/HTTPRequestHandler.h>
+
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
@@ -12,17 +14,35 @@
 namespace RGT::Auth
 {
 
-class RefreshHandler : public Poco::Net::HTTPRequestHandler
+class RefreshHandler : public RGT::Devkit::HTTPRequestHandler
 {
-public:
+private:
     using RedisClientObjectPool = Poco::ObjectPool<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
 
-    RefreshHandler(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool, Poco::Util::LayeredConfiguration & cfg) 
-    : sessionPool_{sessionPool}, redisPool_{redisPool}, cfg_{cfg} {}
-
-    void handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) final;
+public:
+    RefreshHandler(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool, 
+        Poco::Util::LayeredConfiguration & cfg) 
+        : sessionPool_{sessionPool}
+        , redisPool_{redisPool}
+        , cfg_{cfg} 
+    {
+    }
 
 private:
+    virtual void requestPreprocessing(Poco::Net::HTTPServerRequest & request) final;
+
+    virtual std::any extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request) final;
+
+    virtual void requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response) final;
+
+private:
+    struct RequiredPayload
+    {
+        std::string refreshToken;
+        std::string userAgent;
+        std::string fingerprint;
+    };
+
     Poco::Data::SessionPool          & sessionPool_;
     RedisClientObjectPool            & redisPool_;
     Poco::Util::LayeredConfiguration & cfg_;

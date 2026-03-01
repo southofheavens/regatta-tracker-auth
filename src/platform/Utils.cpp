@@ -55,7 +55,7 @@ bool verifyPassword(const std::string& password, const std::string& hash)
     }
 }
 
-std::string createAccessToken(const RGT::Devkit::Tokens::Payload& p)
+std::string createAccessToken(const RGT::Devkit::JWTPayload& p)
 {
     Poco::JWT::Token token;
 

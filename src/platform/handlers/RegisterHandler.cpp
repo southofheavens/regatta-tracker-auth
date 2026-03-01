@@ -5,93 +5,6 @@
 namespace
 {
 
-/// @brief Примитивная валидация запроса
-/// @param req ссылка на запрос
-/// @param cfg ссылка на конфиг
-/// @throw RGT::Devkit::RGTException если запрос некорректен
-void primitiveRequestValidate(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
-{
-    if (req.getContentLength() == Poco::Net::HTTPMessage::UNKNOWN_CONTENT_LENGTH) {
-        throw RGT::Devkit::RGTException("Content length is unknown", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
-        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentLength() == 0) {
-        throw RGT::Devkit::RGTException("Content length is zero", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-
-    if (req.getContentType().find("application/json") == std::string::npos) {
-        throw RGT::Devkit::RGTException("Content-Type must be application/json", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
-    }
-}
-
-// Структура для содержимого запроса (заголовки + тело), которое
-// необходимо для обработки запроса
-struct RequestPayload
-{
-    std::string name;
-    std::string surname;
-    std::string role;
-    std::string login;
-    std::string password;
-};
-
-/// @brief Извлекает из запроса содержимое, необходимое для его обработки
-/// @param req ссылка на запрос
-/// @param cfg ссылка на конфиг
-/// @return RequestPayload
-/// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
-///        отсутствует поле в запросе и т.д.)
-RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
-{
-    Poco::JSON::Object::Ptr jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
-
-    std::map<std::string, Poco::Dynamic::Var> expectedKeysAndPotentialValues = 
-    {
-        {"name", {}},
-        {"surname", {}},
-        {"role", {}},
-        {"login", {}},
-        {"password", {}}
-    };
-    RGT::Auth::Utils::fillRequiredFieldsFromJson(jsonObject, expectedKeysAndPotentialValues);
-
-    auto extractString = [](const std::map<std::string, Poco::Dynamic::Var> & map)
-    {
-        std::map<std::string, std::string> result;
-        for (const auto & [key, value] : map)
-        {
-            try {
-                result[key] = value.extract<std::string>();
-            }
-            catch (...) {
-                throw RGT::Devkit::RGTException(std::format("Field {} must be presented in string format", key),
-                    Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-            }
-        }
-
-        return result;
-    };
-
-    std::map<std::string, std::string> keysAndStringValues = extractString(expectedKeysAndPotentialValues);
-
-    return RequestPayload
-    {
-        .name = keysAndStringValues["name"],
-        .surname = keysAndStringValues["surname"],
-        .role = keysAndStringValues["role"],
-        .login = keysAndStringValues["login"],
-        .password = keysAndStringValues["password"]
-    };
-}
-
 /// @brief Проверка удовлетворяет ли логин требованиям
 /// @param login логин
 /// @note Требования к логину:
@@ -196,18 +109,64 @@ void validateRole(const std::string & role)
 namespace RGT::Auth
 {
 
-void RegisterHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res)
-try
+void RegisterHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request)
 {
-    // Проводим примитивную валидацию запроса 
-    primitiveRequestValidate(req, cfg_);
-    // Извлекаем из запроса содержимое, необходимое для его обработки
-    RequestPayload rp = extractPayloadFromRequest(req, cfg_);
+    HTTPRequestHandler::checkContentLength(request, cfg_.getUInt32("max_request_body_size"));
+    HTTPRequestHandler::checkContentLengthIsNull(request);
+    HTTPRequestHandler::checkContentType(request, "application/json");
+}
+
+std::any RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
+{
+    Poco::JSON::Object::Ptr jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(request);
+
+    std::map<std::string, Poco::Dynamic::Var> expectedKeysAndPotentialValues = 
+    {
+        {"name", {}},
+        {"surname", {}},
+        {"role", {}},
+        {"login", {}},
+        {"password", {}}
+    };
+    RGT::Auth::Utils::fillRequiredFieldsFromJson(jsonObject, expectedKeysAndPotentialValues);
+
+    auto extractString = [](const std::map<std::string, Poco::Dynamic::Var> & map)
+    {
+        std::map<std::string, std::string> result;
+        for (const auto & [key, value] : map)
+        {
+            try {
+                result[key] = value.extract<std::string>();
+            }
+            catch (...) {
+                throw RGT::Devkit::RGTException(std::format("Field {} must be presented in string format", key),
+                    Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+            }
+        }
+
+        return result;
+    };
+
+    std::map<std::string, std::string> keysAndStringValues = extractString(expectedKeysAndPotentialValues);
+
+    return RequiredPayload
+    {
+        .name = keysAndStringValues["name"],
+        .surname = keysAndStringValues["surname"],
+        .role = keysAndStringValues["role"],
+        .login = keysAndStringValues["login"],
+        .password = keysAndStringValues["password"]
+    };
+}
+ 
+void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response)
+{
+    RequiredPayload requiredPayload = std::any_cast<RequiredPayload>(payload_);
 
     // Валидация данных, полученных от пользователя
-    validateLogin(rp.login);
-    validatePassword(rp.password);
-    validateRole(rp.role);
+    validateLogin(requiredPayload.login);
+    validatePassword(requiredPayload.password);
+    validateRole(requiredPayload.role);
 
     Poco::Data::Session session = sessionPool_.get();
 
@@ -217,38 +176,28 @@ try
 
     int userExists = 0;
     stmt << "SELECT COUNT(*) FROM users WHERE login = $1",
-        Poco::Data::Keywords::use(rp.login),
+        Poco::Data::Keywords::use(requiredPayload.login),
         Poco::Data::Keywords::into(userExists);
     stmt.execute();
     
     if (userExists != 0) {
-        throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", rp.login), 
+        throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", requiredPayload.login), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
     // Добавляем данные пользователя в БД
-    std::string hashedPassword = Auth::Utils::hashPassword(rp.password);
+    std::string hashedPassword = Auth::Utils::hashPassword(requiredPayload.password);
     stmt.reset();
     stmt << "INSERT INTO users (name, surname, role, login, password_hash)"
         << "VALUES ($1, $2, $3 , $4, $5)",
-        Poco::Data::Keywords::use(rp.name),
-        Poco::Data::Keywords::use(rp.surname),
-        Poco::Data::Keywords::use(rp.role),
-        Poco::Data::Keywords::use(rp.login),
+        Poco::Data::Keywords::use(requiredPayload.name),
+        Poco::Data::Keywords::use(requiredPayload.surname),
+        Poco::Data::Keywords::use(requiredPayload.role),
+        Poco::Data::Keywords::use(requiredPayload.login),
         Poco::Data::Keywords::use(hashedPassword);
     stmt.execute();
 
-    RGT::Devkit::sendJsonResponse(res, "OK", "OK");
-}
-catch (const RGT::Devkit::RGTException & e)
-{
-    res.setStatusAndReason(e.status());
-    RGT::Devkit::sendJsonResponse(res, "error", e.what());
-}
-catch (...)
-{
-    res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-    RGT::Devkit::sendJsonResponse(res, "error", "Internal server error");
+    HTTPRequestHandler::sendJsonResponse(response, "OK", "OK");
 }
 
 } // namespace RGT::Auth

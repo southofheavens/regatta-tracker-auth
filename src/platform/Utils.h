@@ -11,9 +11,9 @@
 #include <Poco/Redis/Client.h>
 #include <Poco/Redis/PoolableConnectionFactory.h>
 
-#include <rgt/devkit/Tokens.h>
 #include <rgt/devkit/General.h>
 #include <rgt/devkit/RGTException.h>
+#include <rgt/devkit/JWTPayload.h>
 
 namespace RGT::Auth::Utils
 {
@@ -42,7 +42,7 @@ bool verifyPassword(const std::string & password, const std::string & hash);
  * @param p Полезная нагрузка
  * @return Токен
  */
-std::string createAccessToken(const RGT::Devkit::Tokens::Payload & p);
+std::string createAccessToken(const RGT::Devkit::JWTPayload & p);
 
 /**
  * @brief Генерирует refresh токен, представляющий из себя UUID

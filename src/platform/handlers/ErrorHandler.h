@@ -1,6 +1,7 @@
 #ifndef __ERROR_HANDLER_H__
 #define __ERROR_HANDLER_H__
 
+#include <rgt/devkit/HTTPRequestHandler.h>
 #include <Utils.h>
 
 #include <Poco/Net/HTTPRequestHandler.h>
@@ -10,15 +11,20 @@
 namespace RGT::Auth
 {
 
-class ErrorHandler : public Poco::Net::HTTPRequestHandler
+class ErrorHandler : public RGT::Devkit::HTTPRequestHandler
 {
-public:
-    ErrorHandler() = default;
-
-    void handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) final
+private:
+    virtual void requestPreprocessing(Poco::Net::HTTPServerRequest & request) final
     {
-        res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        RGT::Devkit::sendJsonResponse(res, "error", "Non-existent URL or bad method");
+    }
+
+    virtual std::any extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request) final
+    { return std::any{}; }
+
+    virtual void requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response) final
+    {
+        response.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+        HTTPRequestHandler::sendJsonResponse(response, "error", "Non-existent URL or bad method");
     }
 };
 

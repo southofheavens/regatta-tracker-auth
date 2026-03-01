@@ -5,102 +5,30 @@
 #include <Poco/JSON/Parser.h>
 #include <Poco/Util/Application.h>
 
-namespace
+namespace RGT::Auth 
 {
 
-/// @brief Примитивная валидация запроса
-/// @param req ссылка на запрос
-/// @param cfg ссылка на конфиг
-/// @throw RGT::Devkit::RGTException если запрос некорректен
-void primitiveRequestValidate(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
+void RefreshHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request)
 {
-    if (req.getContentLength64() > cfg.getUInt32("max_request_body_size", 1024 * 1024)) {
-        throw RGT::Devkit::RGTException("Content size must not exceed 1 megabyte",
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
+    HTTPRequestHandler::checkContentLength(request, cfg_.getUInt32("max_request_body_size"));
 }
 
-// Структура для содержимого запроса (заголовки + тело), которое
-// необходимо для обработки запроса
-struct RequestPayload
+std::any RefreshHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
 {
-    std::string refreshToken;
-    std::string userAgent;
-    std::string fingerprint;
-};
+    std::shared_ptr<Poco::JSON::Object::Ptr> ppJsonObject = std::make_shared<Poco::JSON::Object::Ptr>(
+        nullptr
+    );
 
-/// @brief Извлекает из запроса содержимое, необходимое для его обработки
-/// @param req ссылка на запрос
-/// @param cfg ссылка на конфиг
-/// @return RequestPayload
-/// @throw RGT::Devkit::RGTException при ошибке (отсутствует заголовок, 
-///        отсутствует поле в запросе и т.д.)
-RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poco::Util::LayeredConfiguration & cfg)
-{
-    Poco::JSON::Object::Ptr jsonObject = nullptr;
+    // Извлекаем из запроса refresh-токен
+    std::string refreshToken = HTTPRequestHandler::extractRefreshFromRequest(request, ppJsonObject);
 
-    // Пытаемся извлечь из запроса refresh-токен
-    Poco::Net::NameValueCollection cookies;
-    req.getCookies(cookies); 
+    // Извлекаем из запроса UA. Читаем только из заголовка
+    const std::string & userAgent = HTTPRequestHandler::extractValueFromHeaders(request, "User-Agent");
 
-    std::string refreshToken;
-    try {
-        refreshToken = cookies["X-Refresh-token"]; 
-    }
-    catch (Poco::Exception & e)
-    {
-        if (req.getContentType().find("application/json") == std::string::npos) {
-            throw RGT::Devkit::RGTException("Refresh token missing in headers; request body is not application/json",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
+    // Извлекаем из запроса fingerprint
+    std::string fingerprint = HTTPRequestHandler::extractFingerprintFromRequest(request, ppJsonObject);
 
-        jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
-        
-        try {
-            refreshToken = jsonObject->get("refresh_token").extract<std::string>();
-        }
-        catch (...) {
-            throw RGT::Devkit::RGTException("Expected to receive refresh token in the cookie/request body",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-    }
-
-    // Пытаемся извлечь из запроса UA. Читаем только из заголовка
-    std::string userAgent;
-    try {
-        userAgent = req.get("User-Agent");
-    }
-    catch (...) {
-        throw RGT::Devkit::RGTException(std::format("User-Agent header was not received"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-
-    // Пытаемся извлечь из запроса fingerprint
-    std::string fingerprint;
-    try {
-        fingerprint = req.get("X-Fingerprint");
-    }
-    catch (...) 
-    {
-        if (req.getContentType().find("application/json") == std::string::npos) {
-            throw RGT::Devkit::RGTException("Fingerprint missing in headers; request body is not application/json",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-
-        if (jsonObject.isNull()) {
-            jsonObject = RGT::Auth::Utils::extractJsonObjectFromRequest(req);
-        }
-
-        try {
-            fingerprint = jsonObject->get("fingerprint").extract<std::string>();
-        }
-        catch (...) {
-            throw RGT::Devkit::RGTException("Expected to receive fingerprint in the headers/request body",
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-        }
-    }
-
-    return RequestPayload
+    return RequiredPayload
     {
         .refreshToken = refreshToken,
         .userAgent = userAgent,
@@ -108,26 +36,17 @@ RequestPayload extractPayloadFromRequest(Poco::Net::HTTPServerRequest & req, Poc
     };
 }
 
-} // namespace
-
-namespace RGT::Auth 
+void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response)
 {
-
-void RefreshHandler::handleRequest(Poco::Net::HTTPServerRequest & req, Poco::Net::HTTPServerResponse & res) 
-try
-{
-    // Проводим примитивную валидацию запроса 
-    primitiveRequestValidate(req, cfg_);
-    // Извлекаем из запроса содержимое, необходимое для его обработки
-    RequestPayload rp = extractPayloadFromRequest(req, cfg_);
+    RequiredPayload requiredPayload = std::any_cast<RequiredPayload>(payload_);
     
-    std::string hashedRefreshToken = Auth::Utils::hashRefreshToken(rp.refreshToken);
+    std::string hashedRefreshToken = Auth::Utils::hashRefreshToken(requiredPayload.refreshToken);
 
     Poco::Redis::Array cmd;
     cmd << "EXISTS" << std::format("rtk:{}", hashedRefreshToken);
     Poco::Int64 int64ResultOfCmd; 
     {
-        Poco::Redis::PooledConnection pc(redisPool_, cfg_.getUInt16("pooled_connection_timeout", 500));
+        Poco::Redis::PooledConnection pc(redisPool_, cfg_.getUInt16("pooled_connection_timeout"));
         int64ResultOfCmd = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
     }
 
@@ -141,7 +60,7 @@ try
     cmd << "HMGET" << std::format("rtk:{}", hashedRefreshToken) << "fingerprint" << "ua" << "user_id";
 
     // TODO try catch ?
-    Poco::Redis::Client::Ptr prcp = redisPool_.borrowObject(cfg_.getUInt16("pooled_connection_timeout", 500));
+    Poco::Redis::Client::Ptr prcp = redisPool_.borrowObject(cfg_.getUInt16("pooled_connection_timeout"));
     Poco::Redis::Array rtkFileds = prcp->execute<Poco::Redis::Array>(cmd);
     redisPool_.returnObject(prcp);
 
@@ -149,8 +68,8 @@ try
     Poco::UInt64 userId = std::stoull(rtkFileds.get<Poco::Redis::BulkString>(2).value());
     Auth::Utils::deleteRefreshFromRedis(redisPool_, hashedRefreshToken, userId);
     
-    if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != rp.fingerprint
-        or rtkFileds.get<Poco::Redis::BulkString>(1).value() != rp.userAgent) 
+    if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != requiredPayload.fingerprint
+        or rtkFileds.get<Poco::Redis::BulkString>(1).value() != requiredPayload.userAgent) 
     {
         throw RGT::Devkit::RGTException(std::format("Refresh token used from unauthorized device"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
@@ -173,8 +92,8 @@ try
 
     // Формируем полезную нагрузку для access-токена
     Poco::UInt16 accessTokenValidityPeriod = 
-        Poco::Util::Application::instance().config().getUInt16("access_token_validity_period", 900);
-    Devkit::Tokens::Payload jwtPayload =
+        Poco::Util::Application::instance().config().getUInt16("access_token_validity_period");
+    RGT::Devkit::JWTPayload jwtPayload =
     {
         .sub = userId,
         .role = userRole,
@@ -191,7 +110,7 @@ try
     std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
     std::string refreshToken = Auth::Utils::createRefreshToken();
 
-    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, rp.fingerprint, rp.userAgent);
+    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, requiredPayload.fingerprint, requiredPayload.userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);
@@ -203,25 +122,9 @@ try
     cookie.setPath("/"); // TODO наверное не стоит делать /
     cookie.setSameSite(Poco::Net::HTTPCookie::SAME_SITE_STRICT);
 
-    res.addCookie(cookie);
+    response.addCookie(cookie);
 
-    resultJson.stringify(res.send());
-}
-catch (const RGT::Devkit::RGTException & e)
-{
-    res.setStatusAndReason(e.status());
-    RGT::Devkit::sendJsonResponse(res, "error", e.what());
-}
-#ifdef __RGT_DEBUG__
-catch (const std::exception & e)
-{
-    RGT::Devkit::sendJsonResponse(res, "error", e.what());
-}
-#endif
-catch (...)
-{
-    res.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-    RGT::Devkit::sendJsonResponse(res, "error", "Internal server error");
+    resultJson.stringify(response.send());
 }
 
 } // namespace RGT::Auth
