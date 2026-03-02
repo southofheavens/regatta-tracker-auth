@@ -31,7 +31,7 @@ std::any LoginHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & 
     try 
     {
         login = dvLogin.extract<std::string>();
-        password = dvLogin.extract<std::string>();
+        password = dvPassword.extract<std::string>();
     }
     catch (...) {
         throw RGT::Devkit::RGTException("Login and password must be presented in string format",

@@ -563,6 +563,9 @@ TEST_F(ServerFixture, login_with_correct_data_and_header_fingerprint)
     // Получаем ответ
     Poco::Net::HTTPResponse response;
     std::istream & is = session.receiveResponse(response);
+    std::string str;
+    Poco::StreamCopier::copyToString(is,str);
+    std::cout << str << std::endl;
     
     // Проверяем статус
     EXPECT_EQ(response.getStatus(), Poco::Net::HTTPResponse::HTTP_OK);
