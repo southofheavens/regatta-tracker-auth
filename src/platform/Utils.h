@@ -106,9 +106,6 @@ inline void fillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, au
     }
 }
 
-// Считывает lua-script из файла с именем filename и возвращает его
-std::string readLuaScript(const std::string & filename);
-
 // Проверяет, есть ли для данных fingerprint и UA refresh-токен. Если да, то возвращает его хэш.
 // В противном случае возвращает std::nullopt 
 std::optional<std::string> getHashRefreshTokenByUserData(RedisClientObjectPool & redisPool, uint64_t userId,

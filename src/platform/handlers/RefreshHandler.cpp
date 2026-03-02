@@ -16,7 +16,7 @@ void RefreshHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request
 std::any RefreshHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
 {
     std::shared_ptr<Poco::JSON::Object::Ptr> ppJsonObject = std::make_shared<Poco::JSON::Object::Ptr>(
-        nullptr
+        nullptr 
     );
 
     // Извлекаем из запроса refresh-токен

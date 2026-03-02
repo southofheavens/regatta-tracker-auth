@@ -106,7 +106,7 @@ void deleteRefreshFromRedis(RedisClientObjectPool & redisPool,
                             const std::string & hashedRefreshToken, 
                             uint64_t userId)
 {
-    static const std::string script = readLuaScript("lua_scripts/delete_refresh.lua");
+    static const std::string script = RGT::Devkit::readLuaScript("lua_scripts/delete_refresh.lua");
 
     Poco::Redis::Array cmd;
     cmd << "EVAL"
@@ -130,7 +130,7 @@ void deleteRefreshFromRedis(RedisClientObjectPool & redisPool,
 void addRefreshToRedis(RedisClientObjectPool & redisPool, std::string & refreshToken, uint64_t userId,
     std::string & fingerprint, std::string & userAgent)
 {
-    static const std::string script = readLuaScript("lua_scripts/add_refresh.lua");
+    static const std::string script = RGT::Devkit::readLuaScript("lua_scripts/add_refresh.lua");
 
     Poco::Redis::Array cmd;
     std::string hashedRefresh = hashRefreshToken(refreshToken);
@@ -159,24 +159,10 @@ void addRefreshToRedis(RedisClientObjectPool & redisPool, std::string & refreshT
     }
 }
 
-std::string readLuaScript(const std::string & filename) 
-{
-    std::ifstream file(filename);
-    
-    if (not file.is_open()) {
-        throw std::runtime_error("Cannot open Lua script: " + filename);
-    }
-    return std::string
-    (
-        std::istreambuf_iterator<char>(file),
-        std::istreambuf_iterator<char>()
-    );
-}
-
 std::optional<std::string> getHashRefreshTokenByUserData(RedisClientObjectPool & redisPool, uint64_t userId,
     std::string & fingerprint, std::string & userAgent)
 {
-    static const std::string script = readLuaScript("lua_scripts/get_refresh_token_hash.lua");
+    static const std::string script = RGT::Devkit::readLuaScript("lua_scripts/get_refresh_token_hash.lua");
 
     Poco::Redis::Array cmd;
 
