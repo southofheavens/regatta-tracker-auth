@@ -1,3 +1,5 @@
+#include <rgt/devkit/Connections.h>
+
 #include <Poco/Data/PostgreSQL/Connector.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
@@ -5,97 +7,6 @@
 
 #include <AuthServer.h>
 #include <AuthFactory.h>
-
-namespace
-{
-
-/// @brief Создаёт и инициализирует пул соединений с PostgreSQL
-/// @param cfg Конфигурация с параметрами подключения (psql.host, psql.port, ...)
-/// @return Указатель на пул сессий
-/// @throw Poco::Exception при ошибке подключения
-std::unique_ptr<Poco::Data::SessionPool> connectToPsql(const Poco::Util::LayeredConfiguration & cfg)
-{
-    std::string connectionString = std::format
-    (
-        "host={0} port={1} dbname={2} user={3} password={4}", 
-        cfg.getString("psql.host"),
-        cfg.getString("psql.port"),
-        cfg.getString("psql.dbname"),
-        cfg.getString("psql.user"),
-        cfg.getString("psql.password")
-    );
-
-    std::unique_ptr<Poco::Data::SessionPool> sessionPool = std::make_unique<Poco::Data::SessionPool>("PostgreSQL", 
-        connectionString, cfg.getUInt16("psql.min_sessions", 10), cfg.getUInt16("psql.max_sessions", 10));
-
-    try 
-    {
-        // Проверяем подключение к БД
-        sessionPool->get() << "SELECT 1", Poco::Data::Keywords::now;
-    }
-    catch (...) 
-    {
-        throw Poco::Exception
-        (
-            std::format
-            (
-                "Connection attempt to postgresql failed with host {0} and port {1}",
-                cfg.getString("psql.host"),
-                cfg.getString("psql.port")
-            )
-        );
-    }
-
-    return sessionPool;
-}   
-
-/// @brief Создаёт и инициализирует пул соединений с Redis
-/// @param cfg Конфигурация с параметрами подключения (redis.host, redis.port, ...)
-/// @return Указатель на пул сессий
-/// @throw Poco::Exception при ошибке подключения
-std::unique_ptr<RGT::Auth::AuthServer::RedisClientObjectPool> connectToRedis(const Poco::Util::LayeredConfiguration & cfg)
-{
-    using RedisClientObjectPool = RGT::Auth::AuthServer::RedisClientObjectPool;
-    using RedisClientPoolableObjectFactory = Poco::PoolableObjectFactory<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
-    std::unique_ptr<RedisClientObjectPool> redisPool = std::make_unique<RedisClientObjectPool>
-    (
-        RedisClientPoolableObjectFactory
-        (
-            std::format
-            (
-                "{0}:{1}",
-                cfg.getString("redis.host"),
-                cfg.getString("redis.port")
-            )
-        ), 
-        cfg.getUInt16("redis.min_sessions", 10), 
-        cfg.getUInt16("redis.max_sessions", 10)
-    );
-
-    try
-    {
-        Poco::Redis::PooledConnection pc(*redisPool);
-        Poco::Redis::Array cmd;
-        cmd << "PING";
-        std::string result = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<std::string>(cmd);
-    }
-    catch (...) 
-    {
-        throw Poco::Exception
-        (
-            std::format
-            (
-                "Connection attempt to redis failed with host {0} and port {1}",
-                cfg.getString("redis.host"),
-                cfg.getString("redis.port")
-            )
-        );
-    }
-    
-    return redisPool;
-} 
-
-} // namespace
 
 namespace RGT::Auth
 {
@@ -112,8 +23,13 @@ void AuthServer::initialize(Poco::Util::Application & self)
     Poco::Data::PostgreSQL::Connector::registerConnector();
 
     const Poco::Util::LayeredConfiguration & cfg = AuthServer::config();
-    sessionPool_ = connectToPsql(cfg);
-    redisPool_ = connectToRedis(cfg);
+
+    sessionPool_ = RGT::Devkit::connectToPsql(cfg.getString("psql.host"), cfg.getString("psql.port"),
+        cfg.getString("psql.dbname"), cfg.getString("psql.user"),cfg.getString("psql.password"),
+        cfg.getUInt16("psql.min_sessions"), cfg.getUInt16("psql.max_sessions"));
+
+    redisPool_ = RGT::Devkit::connectToRedis(cfg.getString("redis.host"), cfg.getString("redis.port"),
+        cfg.getUInt16("redis.min_sessions"), cfg.getUInt16("redis.max_sessions"));
 }
 
 void AuthServer::uninitialize()
@@ -128,7 +44,7 @@ try
 {
     Poco::Util::LayeredConfiguration & cfg = AuthServer::config();
 
-    Poco::Net::ServerSocket svs(cfg.getUInt16("server.port", 8080));
+    Poco::Net::ServerSocket svs(cfg.getUInt16("server.port"));
     
     Poco::Net::HTTPServer srv
     (
