@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     build-base \
     meson \
     poco-dev \
-    libsodium-dev
+    libsodium-dev \
+    gtest-dev
 
 WORKDIR /app
 
