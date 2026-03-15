@@ -1,5 +1,4 @@
 FROM alpine:3.23.3
-COPY . ./app
 
 RUN apk add --no-cache \
     openssl-dev \
@@ -9,7 +8,11 @@ RUN apk add --no-cache \
     meson \
     poco-dev \
     libsodium-dev \
-    gtest-dev
+    gtest-dev \
+    aws-sdk-cpp-dev \
+    aws-crt-cpp-dev 
+
+COPY . ./app
 
 WORKDIR /app
 
