@@ -3,3 +3,4 @@
 subprojects/*
 !subprojects/rgt-devkit.wrap
 
+.env

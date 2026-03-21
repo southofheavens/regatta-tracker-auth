@@ -1,2 +1,5 @@
 /build
+.env
 
+subprojects/**
+!subprojects/*.wrap

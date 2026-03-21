@@ -1,4 +1,5 @@
-#include <rgt/devkit/Connections.h>
+#include <rgt/devkit/subsystems/PsqlSubsystem.h>
+#include <rgt/devkit/subsystems/RedisSubsystem.h>
 
 #include <Poco/Data/PostgreSQL/Connector.h>
 #include <Poco/Net/ServerSocket.h>
@@ -14,30 +15,21 @@ namespace RGT::Auth
 void AuthServer::initialize(Poco::Util::Application & self)
 {
     loadConfiguration();
+
+    RGT::Devkit::readDotEnv();
+
+    Poco::Util::Application::addSubsystem(new RGT::Devkit::Subsystems::PsqlSubsystem());
+    Poco::Util::Application::addSubsystem(new RGT::Devkit::Subsystems::RedisSubsystem());  
+
     ServerApplication::initialize(self);
 
     if (sodium_init() < 0) {
-        throw Poco::Exception("Failed to initialize libsodium");
+        throw std::runtime_error("Failed to initialize libsodium");
     }
-
-    Poco::Data::PostgreSQL::Connector::registerConnector();
-
-    const Poco::Util::LayeredConfiguration & cfg = AuthServer::config();
-
-    sessionPool_ = RGT::Devkit::connectToPsql(cfg.getString("psql.host"), cfg.getString("psql.port"),
-        cfg.getString("psql.dbname"), cfg.getString("psql.user"),cfg.getString("psql.password"),
-        cfg.getUInt16("psql.min_sessions"), cfg.getUInt16("psql.max_sessions"));
-
-    redisPool_ = RGT::Devkit::connectToRedis(cfg.getString("redis.host"), cfg.getString("redis.port"),
-        cfg.getUInt16("redis.min_sessions"), cfg.getUInt16("redis.max_sessions"));
 }
 
 void AuthServer::uninitialize()
-{
-    Poco::Data::PostgreSQL::Connector::unregisterConnector();
-
-    ServerApplication::uninitialize();
-}
+{ ServerApplication::uninitialize(); }
 
 int AuthServer::main(const std::vector<std::string>&)
 try
@@ -45,10 +37,13 @@ try
     Poco::Util::LayeredConfiguration & cfg = AuthServer::config();
 
     Poco::Net::ServerSocket svs(cfg.getUInt16("server.port"));
+
+    auto & redisSubsystem = Poco::Util::Application::getSubsystem<Devkit::Subsystems::RedisSubsystem>();
+    auto & psqlSubsystem = Poco::Util::Application::getSubsystem<Devkit::Subsystems::PsqlSubsystem>();
     
     Poco::Net::HTTPServer srv
     (
-        new Auth::AuthFactory(*sessionPool_, *redisPool_, cfg), 
+        new Auth::AuthFactory(psqlSubsystem.getPool(), redisSubsystem.getPool(), cfg), 
         svs, 
         new Poco::Net::HTTPServerParams
     );
