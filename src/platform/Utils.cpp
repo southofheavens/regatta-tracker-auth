@@ -68,7 +68,15 @@ std::string createAccessToken(const RGT::Devkit::JWTPayload& p)
     );
     token.setExpiration(expires);
     
-    Poco::JWT::Signer signer(Poco::Util::Application::instance().config().getString("signing_key"));
+    static const auto secretKey = []() -> std::string
+    {
+        const std::optional<std::string> secretKey = RGT::Devkit::getEnv("SECRET_KEY");
+        if (not secretKey.has_value()) {
+            throw std::runtime_error("The \"SECRET_KEY\" environment variable is missing for token signature verification");
+        }
+        return *secretKey;
+    }();
+    Poco::JWT::Signer signer(secretKey);
     return signer.sign(token, Poco::JWT::Signer::ALGO_HS256);
 }
 
