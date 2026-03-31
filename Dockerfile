@@ -10,13 +10,26 @@ RUN apk add --no-cache \
     libsodium-dev \
     gtest-dev \
     aws-sdk-cpp-dev \
-    aws-crt-cpp-dev 
+    aws-crt-cpp-dev \
+    cmake
+
+RUN git clone --branch v0.15.0 --depth 1 https://github.com/alanxz/rabbitmq-c.git /tmp/rabbitmq-c && \
+    cd /tmp/rabbitmq-c && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_SHARED_LIBS=ON \
+        -DBUILD_STATIC_LIBS=ON && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/rabbitmq-c
 
 COPY . ./app
 
 WORKDIR /app
 
 RUN meson build
-RUN meson compile -C build -j 3
+RUN meson compile -C build -j 1
 
 CMD ["./build/rgt-auth"]
