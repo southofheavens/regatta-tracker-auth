@@ -1,5 +1,5 @@
-#include <rgt/devkit/subsystems/PsqlSubsystem.h>
-#include <rgt/devkit/subsystems/RedisSubsystem.h>
+#include <RGT/Devkit/Subsystems/PsqlSubsystem.h>
+#include <RGT/Devkit/Subsystems/RedisSubsystem.h>
 
 #include <Poco/Data/PostgreSQL/Connector.h>
 #include <Poco/Net/ServerSocket.h>

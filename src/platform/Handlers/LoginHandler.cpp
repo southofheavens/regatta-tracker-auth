@@ -1,8 +1,8 @@
-#include <handlers/LoginHandler.h>
+#include <Handlers/LoginHandler.h>
 #include <Utils.h>
 #include <Poco/Util/Application.h>
 
-namespace RGT::Auth
+namespace RGT::Auth::Handlers
 {
 
 void LoginHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request)
@@ -71,7 +71,7 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
         }
     }
 
-    if (not Auth::Utils::verifyPassword(requiredPayload.password, hashedPassword)) {
+    if (not Auth::verifyPassword(requiredPayload.password, hashedPassword)) {
         throw RGT::Devkit::RGTException("Incorrect login or password", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
@@ -80,7 +80,7 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
     if 
     (
         std::optional<std::string> potentionalRefreshHash
-            = Auth::Utils::getHashRefreshTokenByUserData(redisPool_, userId, requiredPayload.fingerprint, 
+            = Auth::getHashRefreshTokenByUserData(redisPool_, userId, requiredPayload.fingerprint, 
                 requiredPayload.userAgent);
         potentionalRefreshHash.has_value()
     ) 
@@ -88,7 +88,7 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
         // Удаляем хэш refresh-токена из Redis (т.к. дальше для данных UA и fingerprint
         // будет создан новый refresh-токен, а уже существующий мы не можем использовать
         // потому, что в Redis хранится хэш, а не сам токен)
-        Auth::Utils::deleteRefreshFromRedis(redisPool_, potentionalRefreshHash.value(), userId);
+        Auth::deleteRefreshFromRedis(redisPool_, potentionalRefreshHash.value(), userId);
     }
 
     // Формируем полезную нагрузку для access-токена
@@ -107,10 +107,10 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
     };
 
     // Генерируем access и refresh токены 
-    std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
-    std::string refreshToken = Auth::Utils::createRefreshToken();
+    std::string accessToken = Auth::createAccessToken(jwtPayload);
+    std::string refreshToken = Auth::createRefreshToken();
 
-    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, 
+    Auth::addRefreshToRedis(redisPool_, refreshToken, userId, 
         requiredPayload.fingerprint, requiredPayload.userAgent);
 
     Poco::JSON::Object resultJson;
@@ -129,4 +129,4 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
     resultJson.stringify(response.send());
 }
 
-} // namespace RGT::Auth 
+} // namespace RGT::Auth::Handlers

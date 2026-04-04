@@ -1,5 +1,4 @@
-#ifndef __AUTH_SERVER_H__
-#define __AUTH_SERVER_H__
+#pragma once
 
 #include <vector>
 #include <string>
@@ -22,5 +21,3 @@ public:
 };
 
 } // namespace RGT::Auth
-
-#endif // __AUTH_SERVER_H__

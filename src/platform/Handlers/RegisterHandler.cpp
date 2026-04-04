@@ -1,4 +1,4 @@
-#include <handlers/RegisterHandler.h>
+#include <Handlers/RegisterHandler.h>
 #include <Utils.h>
 #include <cctype>
 
@@ -106,7 +106,7 @@ void validateRole(const std::string & role)
 
 } // namespace
 
-namespace RGT::Auth
+namespace RGT::Auth::Handlers
 {
 
 void RegisterHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request)
@@ -128,7 +128,7 @@ std::any RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest
         {"login", {}},
         {"password", {}}
     };
-    RGT::Auth::Utils::fillRequiredFieldsFromJson(jsonObject, expectedKeysAndPotentialValues);
+    RGT::Auth::fillRequiredFieldsFromJson(jsonObject, expectedKeysAndPotentialValues);
 
     auto extractString = [](const std::map<std::string, Poco::Dynamic::Var> & map)
     {
@@ -170,15 +170,13 @@ void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, 
 
     Poco::Data::Session session = sessionPool_.get();
 
-    Poco::Data::Statement stmt(session);
-
     // Проверим существует ли пользователь с переданным логином
 
     int userExists = 0;
-    stmt << "SELECT COUNT(*) FROM users WHERE login = $1",
+    session << "SELECT COUNT(*) FROM users WHERE login = $1",
         Poco::Data::Keywords::use(requiredPayload.login),
-        Poco::Data::Keywords::into(userExists);
-    stmt.execute();
+        Poco::Data::Keywords::into(userExists),
+        Poco::Data::Keywords::now;
     
     if (userExists != 0) {
         throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", requiredPayload.login), 
@@ -186,18 +184,24 @@ void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, 
     }
 
     // Добавляем данные пользователя в БД
-    std::string hashedPassword = Auth::Utils::hashPassword(requiredPayload.password);
-    stmt.reset();
-    stmt << "INSERT INTO users (name, surname, role, login, password_hash)"
-        << "VALUES ($1, $2, $3 , $4, $5)",
+    std::string hashedPassword = Auth::hashPassword(requiredPayload.password);
+    uint64_t userId;
+    session << "INSERT INTO users (name, surname, role, login, password_hash)"
+        << "VALUES ($1, $2, $3 , $4, $5)"
+        << "RETURNING id",
         Poco::Data::Keywords::use(requiredPayload.name),
         Poco::Data::Keywords::use(requiredPayload.surname),
         Poco::Data::Keywords::use(requiredPayload.role),
         Poco::Data::Keywords::use(requiredPayload.login),
-        Poco::Data::Keywords::use(hashedPassword);
-    stmt.execute();
+        Poco::Data::Keywords::use(hashedPassword),
+        Poco::Data::Keywords::into(userId),
+        Poco::Data::Keywords::now;
 
-    HTTPRequestHandler::sendJsonResponse(response, "OK", "OK");
+    Poco::JSON::Object json;
+    json.set("id", userId);
+
+    response.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_CREATED);
+    json.stringify(response.send());
 }
 
-} // namespace RGT::Auth
+} // namespace RGT::Auth::Handlers

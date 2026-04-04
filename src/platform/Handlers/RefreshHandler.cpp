@@ -1,11 +1,11 @@
-#include <handlers/RefreshHandler.h>
+#include <Handlers/RefreshHandler.h>
 #include <Utils.h>
 
 #include <Poco/StreamCopier.h>
 #include <Poco/JSON/Parser.h>
 #include <Poco/Util/Application.h>
 
-namespace RGT::Auth 
+namespace RGT::Auth::Handlers
 {
 
 void RefreshHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request)
@@ -40,7 +40,7 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
 {
     RequiredPayload requiredPayload = std::any_cast<RequiredPayload>(payload_);
     
-    std::string hashedRefreshToken = Auth::Utils::hashRefreshToken(requiredPayload.refreshToken);
+    std::string hashedRefreshToken = Auth::hashRefreshToken(requiredPayload.refreshToken);
 
     Poco::Redis::Array cmd;
     cmd << "EXISTS" << std::format("rtk:{}", hashedRefreshToken);
@@ -66,7 +66,7 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
 
     // Удаляем hash refresh-токена из ZSET и HSET
     Poco::UInt64 userId = std::stoull(rtkFileds.get<Poco::Redis::BulkString>(2).value());
-    Auth::Utils::deleteRefreshFromRedis(redisPool_, hashedRefreshToken, userId);
+    Auth::deleteRefreshFromRedis(redisPool_, hashedRefreshToken, userId);
     
     if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != requiredPayload.fingerprint
         or rtkFileds.get<Poco::Redis::BulkString>(1).value() != requiredPayload.userAgent) 
@@ -107,10 +107,10 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     };
 
     // Генерируем access и refresh токены
-    std::string accessToken = Auth::Utils::createAccessToken(jwtPayload);
-    std::string refreshToken = Auth::Utils::createRefreshToken();
+    std::string accessToken = Auth::createAccessToken(jwtPayload);
+    std::string refreshToken = Auth::createRefreshToken();
 
-    Auth::Utils::addRefreshToRedis(redisPool_, refreshToken, userId, requiredPayload.fingerprint, requiredPayload.userAgent);
+    Auth::addRefreshToRedis(redisPool_, refreshToken, userId, requiredPayload.fingerprint, requiredPayload.userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);
@@ -127,4 +127,4 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     resultJson.stringify(response.send());
 }
 
-} // namespace RGT::Auth
+} // namespace RGT::Auth::Handlers

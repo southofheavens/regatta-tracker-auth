@@ -1,7 +1,6 @@
-#ifndef __REGISTER_HANDLER_H__
-#define __REGISTER_HANDLER_H__
+#pragma once
 
-#include <rgt/devkit/HTTPRequestHandler.h>
+#include <RGT/Devkit/HTTPRequestHandler.h>
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerRequest.h>
@@ -9,7 +8,7 @@
 #include <Poco/Data/SessionPool.h>
 #include <Poco/Util/LayeredConfiguration.h>
 
-namespace RGT::Auth
+namespace RGT::Auth::Handlers
 {
 
 class RegisterHandler : public RGT::Devkit::HTTPRequestHandler
@@ -41,6 +40,4 @@ private:
     Poco::Util::LayeredConfiguration & cfg_;
 };
     
-} // namespace RGT::Auth
-
-#endif // __REGISTER_HANDLER_H__
+} // namespace RGT::Auth::Handlers

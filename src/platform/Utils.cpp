@@ -25,7 +25,7 @@
 #include <Poco/Redis/Command.h>
 #include <Poco/Util/Application.h>
 
-namespace RGT::Auth::Utils
+namespace RGT::Auth
 {
 
 std::string hashPassword(const std::string& password)
@@ -127,7 +127,7 @@ void deleteRefreshFromRedis(RedisClientObjectPool & redisPool,
     try 
     {
         Poco::Redis::PooledConnection pc(redisPool, 500);
-        Poco::Int64 result = static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
+        static_cast<Poco::Redis::Client::Ptr>(pc)->execute<Poco::Int64>(cmd);
     } 
     catch (...) {
         throw RGT::Devkit::RGTException("Internal server error. Try repeating the request.",
@@ -196,4 +196,4 @@ std::optional<std::string> getHashRefreshTokenByUserData(RedisClientObjectPool &
     }
 }
 
-} // namespace RGT::Auth::Utils
+} // namespace RGT::Auth

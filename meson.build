@@ -45,9 +45,9 @@ endif
 
 src_files = [
   'src/app/main.cpp',
-  'src/platform/handlers/LoginHandler.cpp',
-  'src/platform/handlers/RefreshHandler.cpp',
-  'src/platform/handlers/RegisterHandler.cpp',
+  'src/platform/Handlers/LoginHandler.cpp',
+  'src/platform/Handlers/RefreshHandler.cpp',
+  'src/platform/Handlers/RegisterHandler.cpp',
   'src/platform/Utils.cpp',
   'src/platform/AuthFactory.cpp',
   'src/platform/AuthServer.cpp'

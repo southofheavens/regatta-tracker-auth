@@ -1,14 +1,13 @@
-#ifndef __AUTH_FACTORY_H__
-#define __AUTH_FACTORY_H__
+#pragma once
 
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Redis/PoolableConnectionFactory.h>
 #include <Poco/Util/LayeredConfiguration.h>
 
-#include <handlers/LoginHandler.h>
-#include <handlers/RegisterHandler.h>
-#include <handlers/RefreshHandler.h>
-#include <handlers/ErrorHandler.h>
+#include <Handlers/LoginHandler.h>
+#include <Handlers/RegisterHandler.h>
+#include <Handlers/RefreshHandler.h>
+#include <Handlers/ErrorHandler.h>
 
 namespace RGT::Auth
 {
@@ -18,8 +17,11 @@ class AuthFactory : public Poco::Net::HTTPRequestHandlerFactory
 public:
     using RedisClientObjectPool = Poco::ObjectPool<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
 
-    AuthFactory(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool, Poco::Util::LayeredConfiguration & cfg) 
-        : sessionPool_(sessionPool), redisPool_(redisPool), cfg_(cfg)
+    AuthFactory(Poco::Data::SessionPool & sessionPool, RedisClientObjectPool & redisPool, 
+        Poco::Util::LayeredConfiguration & cfg) 
+        : sessionPool_(sessionPool)
+        , redisPool_(redisPool)
+        , cfg_(cfg)
     {
     }
 
@@ -32,5 +34,3 @@ private:
 };
 
 } // namespace RGT::Auth
-
-#endif // __AUTH_FACTORY_H__

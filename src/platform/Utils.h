@@ -1,5 +1,4 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#pragma once
 
 #include <string>
 #include <array>
@@ -11,11 +10,11 @@
 #include <Poco/Redis/Client.h>
 #include <Poco/Redis/PoolableConnectionFactory.h>
 
-#include <rgt/devkit/General.h>
-#include <rgt/devkit/RGTException.h>
-#include <rgt/devkit/JWTPayload.h>
+#include <RGT/Devkit/General.h>
+#include <RGT/Devkit/RGTException.h>
+#include <RGT/Devkit/JWTPayload.h>
 
-namespace RGT::Auth::Utils
+namespace RGT::Auth
 {
 
 using RedisClientObjectPool = Poco::ObjectPool<Poco::Redis::Client, Poco::Redis::Client::Ptr>;
@@ -111,6 +110,4 @@ inline void fillRequiredFieldsFromHeaders(Poco::Net::HTTPServerRequest & req, au
 std::optional<std::string> getHashRefreshTokenByUserData(RedisClientObjectPool & redisPool, uint64_t userId,
     std::string & fingerprint, std::string & userAgent);
 
-} // namespace RGT::Auth::Utils
-
-#endif // __UTILS_H__
+} // namespace RGT::Auth

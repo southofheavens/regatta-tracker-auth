@@ -1,14 +1,13 @@
-#ifndef __ERROR_HANDLER_H__
-#define __ERROR_HANDLER_H__
+#pragma once
 
-#include <rgt/devkit/HTTPRequestHandler.h>
+#include <RGT/Devkit/HTTPRequestHandler.h>
 #include <Utils.h>
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
-namespace RGT::Auth
+namespace RGT::Auth::Handlers
 {
 
 class ErrorHandler : public RGT::Devkit::HTTPRequestHandler
@@ -28,6 +27,4 @@ private:
     }
 };
 
-} // namespace RGT::Auth
-
-#endif // __ERROR_HANDLER_H__   
+} // namespace RGT::Auth::Handlers

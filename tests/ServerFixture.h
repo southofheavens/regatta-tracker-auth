@@ -1,5 +1,4 @@
-#ifndef __SERVER_FIXTURE_H__
-#define __SERVER_FIXTURE_H__
+#pragma once
 
 #include <memory>
 #include <thread>
@@ -35,5 +34,3 @@ private:
 };
 
 } // namespace RGT::Auth::Tests
-
-#endif // __SERVER_FIXTURE_H__
