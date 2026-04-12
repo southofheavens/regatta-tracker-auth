@@ -13,7 +13,7 @@ void RefreshHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request
     HTTPRequestHandler::checkContentLength(request, cfg_.getUInt32("max_request_body_size"));
 }
 
-std::any RefreshHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
+void RefreshHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
 {
     std::shared_ptr<Poco::JSON::Object::Ptr> ppJsonObject = std::make_shared<Poco::JSON::Object::Ptr>(
         nullptr 
@@ -28,19 +28,14 @@ std::any RefreshHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest 
     // Извлекаем из запроса fingerprint
     std::string fingerprint = HTTPRequestHandler::extractFingerprintFromRequest(request, ppJsonObject);
 
-    return RequiredPayload
-    {
-        .refreshToken = refreshToken,
-        .userAgent = userAgent,
-        .fingerprint = fingerprint
-    };
+    requestPayload_.refreshToken = refreshToken;
+    requestPayload_.userAgent = userAgent;
+    requestPayload_.fingerprint = fingerprint;
 }
 
 void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response)
-{
-    RequiredPayload requiredPayload = std::any_cast<RequiredPayload>(payload_);
-    
-    std::string hashedRefreshToken = Auth::hashRefreshToken(requiredPayload.refreshToken);
+{   
+    std::string hashedRefreshToken = Auth::hashRefreshToken(requestPayload_.refreshToken);
 
     Poco::Redis::Array cmd;
     cmd << "EXISTS" << std::format("rtk:{}", hashedRefreshToken);
@@ -68,8 +63,8 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     Poco::UInt64 userId = std::stoull(rtkFileds.get<Poco::Redis::BulkString>(2).value());
     Auth::deleteRefreshFromRedis(redisPool_, hashedRefreshToken, userId);
     
-    if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != requiredPayload.fingerprint
-        or rtkFileds.get<Poco::Redis::BulkString>(1).value() != requiredPayload.userAgent) 
+    if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != requestPayload_.fingerprint
+        or rtkFileds.get<Poco::Redis::BulkString>(1).value() != requestPayload_.userAgent) 
     {
         throw RGT::Devkit::RGTException(std::format("Refresh token used from unauthorized device"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
@@ -110,7 +105,7 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     std::string accessToken = Auth::createAccessToken(jwtPayload);
     std::string refreshToken = Auth::createRefreshToken();
 
-    Auth::addRefreshToRedis(redisPool_, refreshToken, userId, requiredPayload.fingerprint, requiredPayload.userAgent);
+    Auth::addRefreshToRedis(redisPool_, refreshToken, userId, requestPayload_.fingerprint, requestPayload_.userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);

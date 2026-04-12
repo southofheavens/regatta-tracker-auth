@@ -116,7 +116,7 @@ void RegisterHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & reques
     HTTPRequestHandler::checkContentType(request, "application/json");
 }
 
-std::any RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
+void RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
 {
     Poco::JSON::Object::Ptr jsonObject = HTTPRequestHandler::extractJsonObjectFromRequest(request);
 
@@ -149,24 +149,19 @@ std::any RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest
 
     std::map<std::string, std::string> keysAndStringValues = extractString(expectedKeysAndPotentialValues);
 
-    return RequiredPayload
-    {
-        .name = keysAndStringValues["name"],
-        .surname = keysAndStringValues["surname"],
-        .role = keysAndStringValues["role"],
-        .login = keysAndStringValues["login"],
-        .password = keysAndStringValues["password"]
-    };
+    requestPayload_.name = keysAndStringValues["name"];
+    requestPayload_.surname = keysAndStringValues["surname"];
+    requestPayload_.role = keysAndStringValues["role"];
+    requestPayload_.login = keysAndStringValues["login"];
+    requestPayload_.password = keysAndStringValues["password"];
 }
  
 void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response)
 {
-    RequiredPayload requiredPayload = std::any_cast<RequiredPayload>(payload_);
-
     // Валидация данных, полученных от пользователя
-    validateLogin(requiredPayload.login);
-    validatePassword(requiredPayload.password);
-    validateRole(requiredPayload.role);
+    validateLogin(requestPayload_.login);
+    validatePassword(requestPayload_.password);
+    validateRole(requestPayload_.role);
 
     Poco::Data::Session session = sessionPool_.get();
 
@@ -174,25 +169,25 @@ void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, 
 
     int userExists = 0;
     session << "SELECT COUNT(*) FROM users WHERE login = $1",
-        Poco::Data::Keywords::use(requiredPayload.login),
+        Poco::Data::Keywords::use(requestPayload_.login),
         Poco::Data::Keywords::into(userExists),
         Poco::Data::Keywords::now;
     
     if (userExists != 0) {
-        throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", requiredPayload.login), 
+        throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", requestPayload_.login), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
     // Добавляем данные пользователя в БД
-    std::string hashedPassword = Auth::hashPassword(requiredPayload.password);
+    std::string hashedPassword = Auth::hashPassword(requestPayload_.password);
     uint64_t userId;
     session << "INSERT INTO users (name, surname, role, login, password_hash)"
         << "VALUES ($1, $2, $3 , $4, $5)"
         << "RETURNING id",
-        Poco::Data::Keywords::use(requiredPayload.name),
-        Poco::Data::Keywords::use(requiredPayload.surname),
-        Poco::Data::Keywords::use(requiredPayload.role),
-        Poco::Data::Keywords::use(requiredPayload.login),
+        Poco::Data::Keywords::use(requestPayload_.name),
+        Poco::Data::Keywords::use(requestPayload_.surname),
+        Poco::Data::Keywords::use(requestPayload_.role),
+        Poco::Data::Keywords::use(requestPayload_.login),
         Poco::Data::Keywords::use(hashedPassword),
         Poco::Data::Keywords::into(userId),
         Poco::Data::Keywords::now;

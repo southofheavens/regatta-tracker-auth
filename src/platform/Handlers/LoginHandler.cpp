@@ -12,7 +12,7 @@ void LoginHandler::requestPreprocessing(Poco::Net::HTTPServerRequest & request)
     HTTPRequestHandler::checkContentType(request, "application/json");
 }
 
-std::any LoginHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
+void LoginHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request)
 {
     std::shared_ptr<Poco::JSON::Object::Ptr> ppJsonObject = std::make_shared<Poco::JSON::Object::Ptr>(
         HTTPRequestHandler::extractJsonObjectFromRequest(request)
@@ -38,19 +38,14 @@ std::any LoginHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
-    return RequiredPayload
-    {
-        .userAgent = userAgent,
-        .fingerprint = fingerprint,
-        .login = login,
-        .password = password
-    };
+    requestPayload_.userAgent = userAgent;
+    requestPayload_.fingerprint = fingerprint;
+    requestPayload_.login = login;
+    requestPayload_.password = password;
 }
 
 void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response)
 {
-    RequiredPayload requiredPayload = std::any_cast<RequiredPayload>(payload_);
-
     /// Смотрим, есть ли пользователь с таким логином && правильно ли введён пароль,
     /// если пользователь с таким логином существует    
     std::string hashedPassword, userRole;
@@ -60,7 +55,7 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
         Poco::Data::Statement stmt(session);
 
         stmt << "SELECT password_hash, role, id FROM users WHERE login = $1",
-            Poco::Data::Keywords::use(requiredPayload.login),
+            Poco::Data::Keywords::use(requestPayload_.login),
             Poco::Data::Keywords::into(hashedPassword),
             Poco::Data::Keywords::into(userRole),
             Poco::Data::Keywords::into(userId);
@@ -71,7 +66,7 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
         }
     }
 
-    if (not Auth::verifyPassword(requiredPayload.password, hashedPassword)) {
+    if (not Auth::verifyPassword(requestPayload_.password, hashedPassword)) {
         throw RGT::Devkit::RGTException("Incorrect login or password", 
             Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
     }
@@ -80,8 +75,8 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
     if 
     (
         std::optional<std::string> potentionalRefreshHash
-            = Auth::getHashRefreshTokenByUserData(redisPool_, userId, requiredPayload.fingerprint, 
-                requiredPayload.userAgent);
+            = Auth::getHashRefreshTokenByUserData(redisPool_, userId, requestPayload_.fingerprint, 
+                requestPayload_.userAgent);
         potentionalRefreshHash.has_value()
     ) 
     {
@@ -111,7 +106,7 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
     std::string refreshToken = Auth::createRefreshToken();
 
     Auth::addRefreshToRedis(redisPool_, refreshToken, userId, 
-        requiredPayload.fingerprint, requiredPayload.userAgent);
+        requestPayload_.fingerprint, requestPayload_.userAgent);
 
     Poco::JSON::Object resultJson;
     resultJson.set("access_token", accessToken);

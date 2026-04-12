@@ -14,7 +14,7 @@
 #include <iostream>
 #include <random>
 
-#include <ServerFixture.h>
+#include <Fixtures.h>
 
 namespace RGT::Auth::Tests
 {
@@ -22,20 +22,20 @@ namespace RGT::Auth::Tests
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль, но не устанавливает размер контента
-TEST_F(ServerFixture, login_without_content_lenght)
+TEST_F(LoginFixture, login_without_content_lenght)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
         
     // Устанавливаем заголовки
     request.setContentType("application/json");
-    request.set("User-Agent", "TestClient/1.0");
-    request.set("X-Fingerprint", "some_fingerprint");
+    request.set("User-Agent", Devkit::TestTools::default_user_agent);
+    request.set("X-Fingerprint", Devkit::TestTools::default_fingerprint);
 
     // Формируем тело запроса
     Poco::JSON::Object jsonBody;
-    jsonBody.set("login", "zhuravlevsema");
-    jsonBody.set("password", "zhuravleVSEMA-");
+    jsonBody.set("login", userName);
+    jsonBody.set("password", Devkit::TestTools::default_password);
 
     // Приводим тело запроса из Poco::JSON::Object к std::string
     std::ostringstream bodyStream;
@@ -82,7 +82,7 @@ TEST_F(ServerFixture, login_without_content_lenght)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль, но размер контента превышает допустимый
-TEST_F(ServerFixture, login_with_incorrect_content_lenght)
+TEST_F(LoginFixture, login_with_incorrect_content_lenght)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -143,7 +143,7 @@ TEST_F(ServerFixture, login_with_incorrect_content_lenght)
 // Сценарий:
 // Клиент хочет получить access и refresh токены, но размер
 // отправляемых данных равен 0 (клиент ничего не отправил)
-TEST_F(ServerFixture, login_with_empty_body)
+TEST_F(LoginFixture, login_with_empty_body)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -193,7 +193,7 @@ TEST_F(ServerFixture, login_with_empty_body)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль, но отсутствует заголовок Content-Type 
-TEST_F(ServerFixture, login_without_content_type_header)
+TEST_F(LoginFixture, login_without_content_type_header)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -251,7 +251,7 @@ TEST_F(ServerFixture, login_without_content_type_header)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // НЕкорректные логин и пароль
-TEST_F(ServerFixture, login_with_incorrect_data)
+TEST_F(LoginFixture, login_with_incorrect_data)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -307,7 +307,7 @@ TEST_F(ServerFixture, login_with_incorrect_data)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль, но в заголовках и полях тела отсутствует fingerprint
-TEST_F(ServerFixture, login_without_fingerprint)
+TEST_F(LoginFixture, login_without_fingerprint)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -365,7 +365,7 @@ TEST_F(ServerFixture, login_without_fingerprint)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль, но отсутствует заголовок User-Agent
-TEST_F(ServerFixture, login_without_user_agent_header)
+TEST_F(LoginFixture, login_without_user_agent_header)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -423,7 +423,7 @@ TEST_F(ServerFixture, login_without_user_agent_header)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // только логин
-TEST_F(ServerFixture, login_with_only_login)
+TEST_F(LoginFixture, login_with_only_login)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -478,7 +478,7 @@ TEST_F(ServerFixture, login_with_only_login)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // только пароль
-TEST_F(ServerFixture, login_with_only_password)
+TEST_F(LoginFixture, login_with_only_password)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -533,7 +533,7 @@ TEST_F(ServerFixture, login_with_only_password)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль. Fingerprint передается через заголовок
-TEST_F(ServerFixture, login_with_correct_data_and_header_fingerprint)
+TEST_F(LoginFixture, login_with_correct_data_and_header_fingerprint)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");
@@ -589,7 +589,7 @@ TEST_F(ServerFixture, login_with_correct_data_and_header_fingerprint)
 // Сценарий:
 // Клиент хочет получить access и refresh токены и отправляет на сервер
 // корректные логин и пароль. Fingerprint передается через тело запроса
-TEST_F(ServerFixture, login_with_correct_data_and_body_fingerprint)
+TEST_F(LoginFixture, login_with_correct_data_and_body_fingerprint)
 {
     Poco::Net::HTTPClientSession session("127.0.0.1", 8080); 
     Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_POST, "/login");

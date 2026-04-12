@@ -1,9 +1,12 @@
 #include <RGT/Devkit/Subsystems/PsqlSubsystem.h>
 #include <RGT/Devkit/Subsystems/RedisSubsystem.h>
+#include <RGT/Devkit/ProjectName.h>
+#include <RGT/Devkit/General.h>
 
 #include <Poco/Data/PostgreSQL/Connector.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
+#include <Poco/Util/JSONConfiguration.h>
 #include <sodium.h>
 
 #include <AuthServer.h>
@@ -14,7 +17,15 @@ namespace RGT::Auth
 
 void AuthServer::initialize(Poco::Util::Application & self)
 {
-    loadConfiguration();
+    try
+    {
+        Poco::Util::JSONConfiguration::Ptr cfg = new Poco::Util::JSONConfiguration(RGT::Devkit::getConfigPath());
+        self.config().add(cfg, PRIO_APPLICATION);
+    }
+    catch (const Poco::Exception & e) {
+        throw std::runtime_error(std::format("Error loading JSON config: {}", e.displayText()));
+    }
+
 
     RGT::Devkit::readDotEnv();
 

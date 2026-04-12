@@ -3,11 +3,7 @@
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Redis/PoolableConnectionFactory.h>
 #include <Poco/Util/LayeredConfiguration.h>
-
-#include <Handlers/LoginHandler.h>
-#include <Handlers/RegisterHandler.h>
-#include <Handlers/RefreshHandler.h>
-#include <Handlers/ErrorHandler.h>
+#include <Poco/Data/SessionPool.h>
 
 namespace RGT::Auth
 {

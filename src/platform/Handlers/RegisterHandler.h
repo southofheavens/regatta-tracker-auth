@@ -22,19 +22,23 @@ public:
 private:
     virtual void requestPreprocessing(Poco::Net::HTTPServerRequest & request) final;
 
-    virtual std::any extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request) final;
+    virtual void extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request) final;
 
-    virtual void requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response) final;
+    virtual void requestProcessing
+    (
+        Poco::Net::HTTPServerRequest & request, 
+        Poco::Net::HTTPServerResponse & response
+    ) final;
 
 private:
-    struct RequiredPayload
+    struct 
     {
         std::string name;
         std::string surname;
         std::string role;
         std::string login;
         std::string password;
-    };
+    } requestPayload_;
 
     Poco::Data::SessionPool          & sessionPool_;
     Poco::Util::LayeredConfiguration & cfg_;

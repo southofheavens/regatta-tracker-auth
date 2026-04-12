@@ -30,18 +30,18 @@ public:
 private:
     virtual void requestPreprocessing(Poco::Net::HTTPServerRequest & request) final;
 
-    virtual std::any extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request) final;
+    virtual void extractPayloadFromRequest(Poco::Net::HTTPServerRequest & request) final;
 
     virtual void requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response) final;
 
 private:
-    struct RequiredPayload
+    struct
     {
         std::string userAgent;
         std::string fingerprint;
         std::string login;
         std::string password;
-    };
+    } requestPayload_;
 
     Poco::Data::SessionPool          & sessionPool_;
     RedisClientObjectPool            & redisPool_;

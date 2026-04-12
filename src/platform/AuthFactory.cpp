@@ -1,5 +1,10 @@
 #include <AuthFactory.h>
 
+#include <RGT/Devkit/ErrorHandler.h>
+#include <Handlers/LoginHandler.h>
+#include <Handlers/RegisterHandler.h>
+#include <Handlers/RefreshHandler.h>
+
 namespace RGT::Auth
 {
 
@@ -20,11 +25,11 @@ Poco::Net::HTTPRequestHandler * AuthFactory::createRequestHandler(const Poco::Ne
             return new RGT::Auth::Handlers::RefreshHandler(sessionPool_, redisPool_, cfg_);
         }
         else {
-            return new RGT::Auth::Handlers::ErrorHandler();
+            return new RGT::Devkit::ErrorHandler();
         }
     }
     else {
-        return new RGT::Auth::Handlers::ErrorHandler();
+        return new RGT::Devkit::ErrorHandler();
     }
 }
 
