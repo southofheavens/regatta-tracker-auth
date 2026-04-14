@@ -1,6 +1,7 @@
 #include <Handlers/LoginHandler.h>
 #include <Utils.h>
 #include <Poco/Util/Application.h>
+#include <RGT/Devkit/Types.h>
 
 namespace RGT::Auth::Handlers
 {
@@ -90,8 +91,8 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
     Poco::UInt16 accessTokenValidityPeriod = cfg_.getUInt16("access_token_validity_period");
     RGT::Devkit::JWTPayload jwtPayload =
     {
-        .sub = userId,
-        .role = userRole,
+        .sub = RGT::Devkit::mapUintToUserId(userId),
+        .role = RGT::Devkit::mapStringToUserRole(userRole),
         .exp = std::chrono::duration_cast<std::chrono::seconds>
         (
             (

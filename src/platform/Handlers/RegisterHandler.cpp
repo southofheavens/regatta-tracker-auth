@@ -89,21 +89,6 @@ void validatePassword(const std::string & password)
     }
 }
 
-/// @brief Проверка удовлетворяет ли роль требованиям 
-/// @param role роль
-/// @note Требования к роли:
-/// @note - роль может быть либо 'Participant' (участник), либо 'Judge' (судья)
-/// @throw RGT::Devkit::RGTException если роль не удовлетворяет требованиям
-void validateRole(const std::string & role)
-{
-    static const std::array<std::string, 2> userRoles = {"Participant", "Judge"};
-
-    if (role != userRoles[0] and role != userRoles[1]) {
-        throw RGT::Devkit::RGTException(std::format("Invalid role. Correct roles is 'Participant' and 'Judge'"), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
-    }
-}
-
 } // namespace
 
 namespace RGT::Auth::Handlers
@@ -151,9 +136,16 @@ void RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & r
 
     requestPayload_.name = keysAndStringValues["name"];
     requestPayload_.surname = keysAndStringValues["surname"];
-    requestPayload_.role = keysAndStringValues["role"];
     requestPayload_.login = keysAndStringValues["login"];
     requestPayload_.password = keysAndStringValues["password"];
+    try {
+        requestPayload_.role = RGT::Devkit::mapStringToUserRole(keysAndStringValues["role"]);
+    }
+    catch (const std::runtime_error & e) 
+    {
+        throw RGT::Devkit::RGTException("Invalid role. Correct roles is 'Participant' and 'Judge'", 
+            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+    }
 }
  
 void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poco::Net::HTTPServerResponse & response)
@@ -161,7 +153,6 @@ void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, 
     // Валидация данных, полученных от пользователя
     validateLogin(requestPayload_.login);
     validatePassword(requestPayload_.password);
-    validateRole(requestPayload_.role);
 
     Poco::Data::Session session = sessionPool_.get();
 
@@ -186,7 +177,7 @@ void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, 
         << "RETURNING id",
         Poco::Data::Keywords::use(requestPayload_.name),
         Poco::Data::Keywords::use(requestPayload_.surname),
-        Poco::Data::Keywords::use(requestPayload_.role),
+        Poco::Data::Keywords::bind(RGT::Devkit::mapUserRoleToString(requestPayload_.role).data()),
         Poco::Data::Keywords::use(requestPayload_.login),
         Poco::Data::Keywords::use(hashedPassword),
         Poco::Data::Keywords::into(userId),

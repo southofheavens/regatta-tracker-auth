@@ -59,7 +59,7 @@ std::string createAccessToken(const RGT::Devkit::JWTPayload& p)
 {
     Poco::JWT::Token token;
 
-    token.setSubject(std::to_string(p.sub));
+    token.setSubject(std::to_string(RGT::Devkit::mapUserIdToUint(p.sub)));
 
     token.payload().set("role", p.role);
 

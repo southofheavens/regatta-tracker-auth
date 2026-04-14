@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RGT/Devkit/HTTPRequestHandler.h>
+#include <RGT/Devkit/Types.h>
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerRequest.h>
@@ -35,9 +36,9 @@ private:
     {
         std::string name;
         std::string surname;
-        std::string role;
         std::string login;
         std::string password;
+        RGT::Devkit::UserRole role;
     } requestPayload_;
 
     Poco::Data::SessionPool          & sessionPool_;
