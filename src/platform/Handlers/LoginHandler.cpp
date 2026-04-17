@@ -63,13 +63,13 @@ void LoginHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, Poc
 
         if (stmt.execute() == 0) {
             throw RGT::Devkit::RGTException("Incorrect login or password", 
-                Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+                Poco::Net::HTTPResponse::HTTPStatus::HTTP_UNAUTHORIZED);
         }
     }
 
     if (not Auth::verifyPassword(requestPayload_.password, hashedPassword)) {
         throw RGT::Devkit::RGTException("Incorrect login or password", 
-            Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST);
+            Poco::Net::HTTPResponse::HTTPStatus::HTTP_UNAUTHORIZED);
     }
 
     // Проверяем, существует ли для данных UA и fingerprint refresh-токен

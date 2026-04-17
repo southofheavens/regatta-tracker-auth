@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: Auth Service API
+  version: 0.0.1
+
+paths:
+  /auth/login:
+    post:
+      summary: User login
+      parameters:
+        - name: User-Agent
+          in: header
+          required: true
+          schema: { type: string }
+          example: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
+        - name: X-Fingerprint
+          in: header
+          required: false
+          schema: { type: string }
+          description: Device fingerprint (приоритет над полем в теле)
+          example: "a1b2c3d4e5f6"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: { type: string, example: "john_doe" }
+                password: { type: string, format: password, example: "Str0ng!Pass" }
+                fingerprint: { type: string, description: "Альтернатива заголовку X-Fingerprint" }
+            examples:
+              via_body:
+                summary: Fingerprint в теле
+                value: { login: "john_doe", password: "Str0ng!Pass", fingerprint: "a1b2c3d4e5f6" }
+              via_header:
+                summary: Fingerprint в заголовке
+                value: { login: "john_doe", password: "Str0ng!Pass" }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string, description: "JWT, expires in ~15min" }
+                  refresh_token: { type: string, description: "UUID v4" }
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                refresh_token: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: "X-Refresh-token=<value>; HttpOnly; Secure; SameSite=Strict; Path=/"
+        '400':
+          description: Malformed request (invalid JSON, missing fields, wrong Content-Type, non-string login/password)
+        '401':
+          description: Authentication failed (user not found or wrong password)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: "Incorrect login or password" }
+        '500':
+          description: Internal server error
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token (rotation)
+      description: |
+        Старый рефреш-токен инвалидируется, выдаётся новая пара.
+        Токен ищется: 1) в куке `X-Refresh-token`, 2) в теле запроса.
+        Все ошибки валидации возвращают один код + одно сообщение.
+      parameters:
+        - name: User-Agent
+          in: header
+          required: true
+          schema: { type: string }
+        - name: X-Fingerprint
+          in: header
+          required: false
+          schema: { type: string }
+          description: Device fingerprint (приоритет над полем в теле)
+        - name: X-Refresh-token
+          in: cookie
+          required: false
+          schema: { type: string }
+          description: Refresh token (приоритет над полем в теле)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token: { type: string, description: "Альтернатива куке" }
+                fingerprint: { type: string, description: "Альтернатива заголовку" }
+            examples:
+              via_body:
+                summary: Токен и фрингерпринт в теле
+                value: { refresh_token: "a1b2c3d4...", fingerprint: "a1b2c3d4e5f6" }
+              via_cookie_header:
+                summary: Токен в куке, фрингерпринт в заголовке
+                value: { }
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                refresh_token: "new-uuid-here..."
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: "X-Refresh-token=<new_value>; HttpOnly; Secure; SameSite=Strict; Path=/"
+        '400':
+          description: Invalid, expired or mismatched refresh token (or malformed request)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: "invalid_grant" }
+        '500':
+          description: Internal server error
+
+  /auth/register:
+    post:
+      summary: Register new user
+      parameters:
+        - name: Content-Type
+          in: header
+          required: true
+          schema: { type: string, enum: [application/json] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, surname, login, password, role]
+              properties:
+                name: { type: string, example: "John" }
+                surname: { type: string, example: "Doe" }
+                login:
+                  type: string
+                  minLength: 3
+                  pattern: "^[a-zA-Z0-9]+$"
+                  description: Latin letters and digits only, case-sensitive
+                  example: "johndoe"
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: "Must contain: 1 uppercase letter, 1 special char from ~!@#$&*-_ "
+                  example: "Str0ng!Pass"
+                role:
+                  type: string
+                  enum: [participant, judge]
+                  example: "participant"
+            example:
+              name: "John"
+              surname: "Doe"
+              login: "johndoe"
+              password: "Str0ng!Pass"
+              role: "participant"
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer, format: int64, description: "New user ID" }
+              example: { id: 1001 }
+        '400':
+          description: Validation error (weak password, invalid format, wrong role, non-string fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+              examples:
+                weak_password:
+                  summary: Password rules violated
+                  value: { error: "The password is missing a capital letter" }
+                invalid_role:
+                  summary: Unknown role
+                  value: { error: "Invalid role. Correct roles is 'participant' and 'judge'" }
+        '409':
+          description: Login already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: "User with login 'johndoe' already exists" }
+        '500':
+          description: Internal server error

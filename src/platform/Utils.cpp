@@ -61,7 +61,7 @@ std::string createAccessToken(const RGT::Devkit::JWTPayload& p)
 
     token.setSubject(std::to_string(RGT::Devkit::mapUserIdToUint(p.sub)));
 
-    token.payload().set("role", p.role);
+    token.payload().set("role", RGT::Devkit::mapUserRoleToString(p.role).data());
 
     Poco::Timestamp expires = static_cast<Poco::Timestamp::TimeVal>(
         std::chrono::duration_cast<std::chrono::microseconds>(p.exp).count()

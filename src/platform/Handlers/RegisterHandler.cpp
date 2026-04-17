@@ -143,7 +143,7 @@ void RegisterHandler::extractPayloadFromRequest(Poco::Net::HTTPServerRequest & r
     }
     catch (const std::runtime_error & e) 
     {
-        throw RGT::Devkit::RGTException("Invalid role. Correct roles is 'Participant' and 'Judge'", 
+        throw RGT::Devkit::RGTException("Invalid role. Correct roles is 'participant' and 'judge'", 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 }
@@ -166,7 +166,7 @@ void RegisterHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, 
     
     if (userExists != 0) {
         throw RGT::Devkit::RGTException(std::format("User with login '{}' already exists", requestPayload_.login), 
-            Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+            Poco::Net::HTTPResponse::HTTP_CONFLICT);
     }
 
     // Добавляем данные пользователя в БД

@@ -48,7 +48,7 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     }
 
     if (int64ResultOfCmd == 0) {
-        throw RGT::Devkit::RGTException(std::format("Bad refresh token"), 
+        throw RGT::Devkit::RGTException(std::format("invalid_grant"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -56,10 +56,17 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     cmd.clear();
     cmd << "HMGET" << std::format("rtk:{}", hashedRefreshToken) << "fingerprint" << "ua" << "user_id";
 
-    // TODO try catch ?
-    Poco::Redis::Client::Ptr prcp = redisPool_.borrowObject(cfg_.getUInt16("pooled_connection_timeout"));
-    Poco::Redis::Array rtkFileds = prcp->execute<Poco::Redis::Array>(cmd);
-    redisPool_.returnObject(prcp);
+    Poco::Redis::Array rtkFileds;
+    {
+        Poco::Redis::PooledConnection pc(redisPool_, 500);
+        Poco::Redis::Client::Ptr redisClient = static_cast<Poco::Redis::Client::Ptr>(pc);
+        if (redisClient.isNull()) 
+        {
+            // TODO рестарт redis?
+            throw std::runtime_error("Poco::Redis::Client::Ptr isNull");
+        }
+        rtkFileds = redisClient->execute<Poco::Redis::Array>(cmd);
+    }
 
     // Удаляем hash refresh-токена из ZSET и HSET
     Poco::UInt64 userId = std::stoull(rtkFileds.get<Poco::Redis::BulkString>(2).value());
@@ -68,7 +75,7 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
     if (rtkFileds.get<Poco::Redis::BulkString>(0).value() != requestPayload_.fingerprint
         or rtkFileds.get<Poco::Redis::BulkString>(1).value() != requestPayload_.userAgent) 
     {
-        throw RGT::Devkit::RGTException(std::format("Refresh token used from unauthorized device"), 
+        throw RGT::Devkit::RGTException(std::format("invalid_grant"), 
             Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
     }
 
@@ -82,8 +89,7 @@ void RefreshHandler::requestProcessing(Poco::Net::HTTPServerRequest & request, P
             Poco::Data::Keywords::into(userRole);
         
         if (stmt.execute() == 0) {
-            throw RGT::Devkit::RGTException(std::format("Internal server error. Try repeating the request"), 
-                Poco::Net::HTTPResponse::HTTP_BAD_REQUEST);
+            throw std::runtime_error("Could not complete the request SELECT role FROM users WHERE id = $1");
         }
     }
 
